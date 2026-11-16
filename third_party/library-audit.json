@@ -4,7 +4,7 @@
   "libsirenCommit": "c7724c03d4a6daf4d6dff9e917c14ce5071dce66",
   "libsirenPatchSha256": "6fef2668cc0d8f7f3ad56d8c7f6c6c23f0d7c8dfe97f7ce27d7bed9475c4632c",
   "inputs": {
-    "COPYING": "f63342ceffff86278ae14a351bdc3d35074bf3e1ff44d36cd8a48b06ecfd6b3d",
+    "COPYING": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "app/src/main/cpp/CMakeLists.txt": "081ed12f9c925b4fb0e9ada4529968a4a93f5737240c833fc8badb3df61d14e3",
     "app/src/main/cpp/siren_jni.c": "2acb1115d50d4e0d7595064af525e50c4e7195360a69bd99f2edd9e1d0ab33f5",
     "app/src/main/java/com/impactomsn/app/UnicodeEmoji.kt": "e59244b40d02cd7441c8f161e108c49b7a19a7bc77e1b2bb6e95afa675fb1050"
@@ -2364,7 +2364,7 @@
         "Caleb Maclennan <caleb@alerque.com>",
         "Bruce Mitchener <bruce.mitchener@gmail.com",
         "Zibi Braniecki <zibi@unicode.org>",
-        "StaÅ› MaÅ‚olepszy <stas@mozilla.com>"
+        "Sta\u00c5\u203a Ma\u00c5\u201aolepszy <stas@mozilla.com>"
       ]
     },
     {
@@ -2392,7 +2392,7 @@
         "Caleb Maclennan <caleb@alerque.com>",
         "Bruce Mitchener <bruce.mitchener@gmail.com",
         "Zibi Braniecki <zibi@unicode.org>",
-        "StaÅ› MaÅ‚olepszy <stas@mozilla.com>"
+        "Sta\u00c5\u203a Ma\u00c5\u201aolepszy <stas@mozilla.com>"
       ]
     },
     {
@@ -2751,7 +2751,7 @@
       ],
       "ecosystem": "Cargo",
       "authors": [
-        "TÃ–RÃ–K Attila <torokati44@gmail.com>"
+        "T\u00c3\u2013R\u00c3\u2013K Attila <torokati44@gmail.com>"
       ]
     },
     {
@@ -2930,7 +2930,7 @@
         "Caleb Maclennan <caleb@alerque.com>",
         "Bruce Mitchener <bruce.mitchener@gmail.com",
         "Zibi Braniecki <zibi@unicode.org>",
-        "StaÅ› MaÅ‚olepszy <stas@mozilla.com>"
+        "Sta\u00c5\u203a Ma\u00c5\u201aolepszy <stas@mozilla.com>"
       ]
     },
     {
@@ -3057,7 +3057,7 @@
       ],
       "ecosystem": "Cargo",
       "authors": [
-        "Marvin LÃ¶bel <loebel.marvin@gmail.com>"
+        "Marvin L\u00c3\u00b6bel <loebel.marvin@gmail.com>"
       ]
     },
     {
@@ -5062,7 +5062,7 @@
         "Caleb Maclennan <caleb@alerque.com>",
         "Laurenz Stampfl <laurenz.stampfl@gmail.com>",
         "Yevhenii Reizner <razrfalcon@gmail.com>",
-        "Ø®Ø§Ù„Ø¯ Ø­Ø³Ù†ÙŠ (Khaled Hosny) <khaled@aliftype.com>"
+        "\u00d8\u00ae\u00d8\u00a7\u00d9\u201e\u00d8\u00af \u00d8\u00ad\u00d8\u00b3\u00d9\u2020\u00d9\u0160 (Khaled Hosny) <khaled@aliftype.com>"
       ]
     },
     {
