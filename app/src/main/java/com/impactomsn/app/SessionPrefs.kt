@@ -223,7 +223,6 @@ object ServerPresets {
         activitiesServerEnabled = true,
         activitiesServer = "data.impactomsn.link",
         emotionSoundServer = com.impactomsn.app.protocol.MsnEmotionSound.DEFAULT_SERVER,
-        emotionSoundServer = com.impactomsn.app.protocol.MsnEmotionSound.DEFAULT_SERVER,
     )
 
     fun presetFor(provider: String): ServerOverrides = when (provider) {
