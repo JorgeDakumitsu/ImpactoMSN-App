@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <shortcut
+        android:shortcutId="change_status"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_change_status"
+        android:shortcutShortLabel="@string/shortcut_change_status_short"
+        android:shortcutLongLabel="@string/shortcut_change_status_long"
+        tools:targetApi="25">
+        <intent
+            android:action="com.impactomsn.app.action.CHANGE_STATUS"
+            android:targetPackage="com.impactomsn.app"
+            android:targetClass="com.impactomsn.app.StatusShortcutActivity" />
+    </shortcut>
+</shortcuts>

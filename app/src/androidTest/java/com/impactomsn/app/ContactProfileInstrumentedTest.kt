@@ -1,0 +1,268 @@
+package com.impactomsn.app
+
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.test.espresso.Espresso.pressBack
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.runBlocking
+import com.impactomsn.app.data.Contact
+import com.impactomsn.app.enums.Presence
+import com.impactomsn.app.pages.ContactProfilePage
+import com.impactomsn.app.pages.components.ContactRow
+import com.impactomsn.app.ui.theme.ImpactoMsnTheme
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.ByteArrayOutputStream
+import java.io.File
+
+@RunWith(AndroidJUnit4::class)
+class ContactProfileInstrumentedTest {
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    private val contact = Contact(
+        id = "friend@example.com",
+        nickname = "Friendly contact",
+        email = "friend@example.com",
+        presence = Presence.Away,
+        statusMessage = "Back soon",
+    )
+
+    @Test
+    fun profileShowsContactDetailsAndHandlesMissingPicture() {
+        showProfile(contact)
+        compose.onNodeWithText("Friendly contact").assertExists()
+        compose.onNodeWithText("Away").assertExists()
+        compose.onNodeWithText("friend@example.com").performScrollTo().assertExists()
+        compose.onNodeWithText("Back soon").performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("View display picture").assertIsNotEnabled()
+    }
+
+    @Test
+    fun nonContactProfileOffersStandardColoredAdditionAndUpdatesAfterSaving() {
+        val current = mutableStateOf(contact.copy(isForwardListContact = false))
+        val targets = mutableListOf<Contact>()
+        var contentColor = Color.Unspecified
+        var errorColor = Color.Unspecified
+        compose.setContent {
+            ImpactoMsnTheme {
+                contentColor = ButtonDefaults.outlinedButtonColors().contentColor
+                errorColor = MaterialTheme.colorScheme.error
+                ContactProfilePage(
+                    contact = current.value,
+                    innerPadding = PaddingValues(),
+                    scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
+                    onBlockContact = {},
+                    onEraseHistory = {},
+                    onDeleteContact = { _, _ -> error("Must not delete") },
+                    onAddContact = { targets += it },
+                )
+            }
+        }
+        compose.onNodeWithText("Delete contact").assertDoesNotExist()
+        val button = compose.onNodeWithText("Add a contact").performScrollTo().assertIsDisplayed()
+        val image = button.captureToImage().asAndroidBitmap()
+        val pixels = IntArray(image.width * image.height)
+        image.getPixels(pixels, 0, image.width, 0, 0, image.width, image.height)
+        assertTrue("Add contact uses the standard outlined button color", pixels.any { it == contentColor.toArgb() })
+        assertFalse("Add contact must not use error colors", pixels.any { it == errorColor.toArgb() })
+        image.recycle()
+        button.performClick()
+        compose.runOnIdle {
+            assertEquals(listOf(current.value), targets)
+            current.value = contact
+        }
+        compose.onNodeWithText("Add a contact").assertDoesNotExist()
+        compose.onNodeWithText("Delete contact").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { current.value = contact.copy(isGroup = true, isForwardListContact = false) }
+        compose.onNodeWithText("Add a contact").assertDoesNotExist()
+        compose.onNodeWithText("Delete contact").assertDoesNotExist()
+    }
+
+    @Test
+    fun tappingPictureOpensDownloadableViewerAndCloseReturnsToProfile() {
+        showProfile(contact.copy(avatarUri = imageUri()))
+        compose.onNodeWithContentDescription("View display picture").performClick()
+        compose.onNodeWithText("Display picture").assertExists()
+        compose.waitUntil(timeoutMillis = 5_000) {
+            runCatching { compose.onNodeWithText("Download picture").assertIsEnabled() }.isSuccess
+        }
+        compose.onNodeWithContentDescription("Close picture").performClick()
+        compose.onNodeWithText("Download picture").assertDoesNotExist()
+        compose.onNodeWithText("Friendly contact").assertExists()
+    }
+
+    @Test
+    fun avatarTapOpensProfileAndNameTapOpensChat() {
+        var profilesOpened = 0
+        var chatsOpened = 0
+        compose.setContent {
+            ImpactoMsnTheme {
+                ContactRow(
+                    index = 0,
+                    count = 1,
+                    contact = contact,
+                    onClick = { chatsOpened++ },
+                    onOpenProfile = { profilesOpened++ },
+                    onReadStateChange = {},
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("View Friendly contact's profile")
+            .performTouchInput { click() }
+        compose.runOnIdle {
+            assertEquals(1, profilesOpened)
+            assertEquals(0, chatsOpened)
+        }
+        compose.onNodeWithText("Friendly contact").performTouchInput { click() }
+        compose.runOnIdle {
+            assertEquals(1, profilesOpened)
+            assertEquals(1, chatsOpened)
+        }
+    }
+
+    @Test
+    fun contactMenuOmitsProfileAndKeepsReadAction() {
+        var profilesOpened = 0
+        var chatsOpened = 0
+        var markedUnread = false
+        compose.setContent {
+            ImpactoMsnTheme {
+                ContactRow(
+                    index = 0,
+                    count = 1,
+                    contact = contact,
+                    onClick = { chatsOpened++ },
+                    onOpenProfile = { profilesOpened++ },
+                    onReadStateChange = { markedUnread = it },
+                )
+            }
+        }
+        compose.onNodeWithText("Friendly contact").performTouchInput { longClick() }
+        compose.onNodeWithText("View profile").assertDoesNotExist()
+        compose.onNodeWithText("Mark as unread").performClick()
+        compose.runOnIdle {
+            assertTrue(markedUnread)
+            assertEquals(0, profilesOpened)
+            assertEquals(0, chatsOpened)
+        }
+    }
+
+    @Test
+    fun downloadWritesReadablePngAndRejectsUnavailableImage() = runBlocking {
+        val output = File.createTempFile("profile-export", ".png", compose.activity.cacheDir)
+        try {
+            val original = imageUri(size = 1024)
+            val thumbnail = requireNotNull(compose.activity.loadAvatarBitmap(original))
+            assertTrue(thumbnail.width < 1024)
+            assertTrue(compose.activity.saveContactPicture(original, Uri.fromFile(output)))
+            val decoded = requireNotNull(BitmapFactory.decodeFile(output.absolutePath))
+            assertEquals(1024, decoded.width)
+            assertEquals(1024, decoded.height)
+            decoded.recycle()
+            assertFalse(compose.activity.saveContactPicture("data:image/png;base64,invalid", Uri.fromFile(output)))
+        } finally {
+            output.delete()
+        }
+    }
+
+    @Test
+    fun eraseHistoryRequiresConfirmationAndTargetsTheDisplayedContact() {
+        val erasedContacts = mutableListOf<Contact>()
+        showProfile(contact, onEraseHistory = { erasedContacts += it })
+        compose.onNodeWithText("Erase history").performScrollTo().performClick()
+        compose.onNodeWithText("Erase chat history?").assertExists()
+        compose.runOnIdle { assertTrue(erasedContacts.isEmpty()) }
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Erase chat history?").assertDoesNotExist()
+        compose.runOnIdle { assertTrue(erasedContacts.isEmpty()) }
+        compose.onNodeWithText("Erase history").performClick()
+        compose.onNodeWithText("Erase").performClick()
+        compose.onNodeWithText("Erase chat history?").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(listOf(contact), erasedContacts) }
+    }
+
+    @Test
+    fun erasingHistoryReplacesItsActionAndBlocksDismissal() {
+        val response = CompletableDeferred<Unit>()
+        var calls = 0
+        showProfile(contact, onEraseHistory = { calls++; response.await() })
+        compose.onNodeWithText("Erase history").performScrollTo().performClick()
+        compose.onNodeWithText("Erase").performClick()
+        compose.waitUntil(5000) { calls == 1 }
+        compose.onNodeWithTag("chat-history-erase-loading", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("Erase").assertDoesNotExist()
+        compose.onNodeWithText("Erasing chat history…").assertDoesNotExist()
+        compose.onNodeWithText("Cancel").assertIsNotEnabled()
+        compose.onNodeWithTag("chat-history-erase-loading-overlay").assertDoesNotExist()
+        pressBack()
+        compose.onNodeWithTag("chat-history-erase-loading", useUnmergedTree = true).assertIsDisplayed()
+        response.complete(Unit)
+        compose.onNodeWithTag("chat-history-erase-loading", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithText("Erase chat history?").assertDoesNotExist()
+    }
+
+    @Test
+    fun eraseFailureKeepsConfirmationOpenForRetry() {
+        showProfile(contact, onEraseHistory = { throw java.io.IOException("Cannot delete") })
+        compose.onNodeWithText("Erase history").performScrollTo().performClick()
+        compose.onNodeWithText("Erase").performClick()
+        compose.onNodeWithText("Could not erase history. Please try again.").assertExists()
+        compose.onNodeWithText("Erase").assertIsEnabled()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Erase chat history?").assertDoesNotExist()
+    }
+
+    private fun showProfile(value: Contact, onEraseHistory: suspend (Contact) -> Unit = {}) {
+        compose.setContent {
+            ImpactoMsnTheme {
+                ContactProfilePage(
+                    contact = value,
+                    innerPadding = PaddingValues(),
+                    scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
+                    onBlockContact = {},
+                    onEraseHistory = onEraseHistory,
+                )
+            }
+        }
+    }
+
+    private fun imageUri(size: Int = 4): String {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        return try {
+            val output = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+            "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+        } finally {
+            bitmap.recycle()
+        }
+    }
+}

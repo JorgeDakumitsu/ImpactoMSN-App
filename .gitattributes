@@ -1,0 +1,19 @@
+# Preserve the pinned upstream Ruffle runtime byte-for-byte.
+app/src/main/assets/ruffle/*.js -text
+app/src/main/assets/ruffle/*.wasm -text
+app/src/main/assets/ruffle/LICENSE_* -text
+app/src/main/assets/ruffle/README.md text eol=lf
+# Unified diffs use a single space for blank context lines. Keep patches LF-only.
+third_party/patches/*.patch text eol=lf -whitespace
+third_party/ruffle-build/* text eol=lf
+third_party/ruffle-runtime.json text eol=lf
+COPYING text eol=lf
+third_party/library-audit.json text eol=lf
+# Preserve whitespace in upstream license texts and generated attribution collections.
+third_party/licenses/* text eol=lf -whitespace
+app/src/main/assets/licenses/*.txt text eol=lf -whitespace linguist-generated=true
+app/src/main/assets/licenses/*.html text eol=lf -whitespace linguist-generated=true
+app/src/main/assets/licenses/*.zip -text
+third_party/library-audit.json linguist-generated=true
+# MSNP frame fixtures retain CRLF and the native custom-sound padding byte-for-byte.
+app/src/test/resources/emotion-sounds/wlm-*.txt -text -whitespace

@@ -1,0 +1,1834 @@
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class,
+)
+
+package com.impactomsn.app
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredHeightIn
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Draw
+import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuGroup
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuPopup
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import com.impactomsn.app.ui.theme.isMsnDark
+import com.impactomsn.app.ui.theme.MsnPalette
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import com.impactomsn.app.data.ChatMessage
+import com.impactomsn.app.data.Contact
+import com.impactomsn.app.data.MessageAuthor
+import com.impactomsn.app.data.MessengerRepository
+import com.impactomsn.app.data.groupFeatures
+import com.impactomsn.app.data.nudgeMonotonicMillis
+import com.impactomsn.app.enums.Presence
+import com.impactomsn.app.notifications.otherUnreadCount
+import com.impactomsn.app.pages.components.Avatar
+import com.impactomsn.app.pages.components.KeyboardPickerSheet
+import com.impactomsn.app.pages.components.KeyboardSheetTile
+import com.impactomsn.app.pages.components.KeyboardSheetTileGrid
+import com.impactomsn.app.pages.components.LocalKeyboardSheetHost
+import com.impactomsn.app.pages.components.MockServerBanner
+import com.impactomsn.app.pages.components.PresenceDot
+import com.impactomsn.app.pages.components.keyboardSheetWindowInsets
+import com.impactomsn.app.protocol.InkDrawing
+import com.impactomsn.app.protocol.WinkReference
+import com.impactomsn.app.ui.theme.ImpactoMsnTheme
+import com.impactomsn.app.ui.theme.chatBubble
+import java.text.DateFormat
+import java.util.Date
+
+class ChatActivity : ImpactoMsnActivity() {
+    internal val notificationConversationId: String? get() = intent.getStringExtra(EXTRA_CONTACT_ID)
+
+    override fun onResume() {
+        super.onResume()
+        notificationConversationId?.let { (application as ImpactoMsnApplication).inAppNotifications.dismissConversation(it) }
+    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (redirectToLoginIfNeeded()) return
+        val contactId = intent.getStringExtra(EXTRA_CONTACT_ID)
+        if (contactId.isNullOrBlank()) {
+            finish()
+            return
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            setLocusContext(
+                android.content.LocusId(
+                    com.impactomsn.app.notifications.ImpactoMsnNotificationManager.conversationShortcutId(contactId),
+                ),
+                null,
+            )
+        }
+        setContent {
+            ImpactoMsnTheme {
+                ChatRoute(
+                    repository = appContainer.messengerRepository,
+                    contactId = contactId,
+                    onBack = ::finish,
+                )
+            }
+        }
+    }
+
+    companion object {
+        private const val EXTRA_CONTACT_ID = "contact_id"
+
+        fun createIntent(context: Context, contactId: String): Intent =
+            Intent(context, ChatActivity::class.java).putExtra(EXTRA_CONTACT_ID, contactId)
+    }
+}
+
+@Composable
+private fun ChatRoute(
+    repository: MessengerRepository,
+    contactId: String,
+    onBack: () -> Unit,
+) {
+    val context = LocalContext.current
+    val drafts by repository.drafts.collectAsState()
+    val textStyles by repository.textStyles.collectAsState()
+    val profile by repository.profile.collectAsState()
+    val contact by repository.contact(contactId).collectAsState(initial = null)
+    var lastKnownContact by remember(contactId) { mutableStateOf<Contact?>(null) }
+    LaunchedEffect(contact) { if (contact != null) lastKnownContact = contact }
+    val conversation by repository.conversation(contactId).collectAsState(initial = null)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val contacts by repository.contacts.collectAsState()
+    val nudgeCooldowns by repository.nudgeCooldowns.collectAsState()
+    val nudgeDeadline = nudgeCooldowns[contactId.lowercase(java.util.Locale.ROOT)]
+    fun remainingNudgeCooldown(): Long = when (nudgeDeadline) {
+        null -> 0L
+        Long.MAX_VALUE -> Long.MAX_VALUE
+        else -> (nudgeDeadline - nudgeMonotonicMillis()).coerceAtLeast(0L)
+    }
+    var nudgeCooldownMillis by remember(nudgeDeadline) { mutableStateOf(remainingNudgeCooldown()) }
+    LaunchedEffect(nudgeDeadline) {
+        do {
+            nudgeCooldownMillis = remainingNudgeCooldown()
+            if (nudgeCooldownMillis == 0L || nudgeCooldownMillis == Long.MAX_VALUE) break
+            delay(200)
+        } while (true)
+    }
+
+    LaunchedEffect(contactId) {
+        repository.loadConversation(contactId)
+    }
+    LaunchedEffect(profile.email, contact?.id, contact?.displayName, contact?.avatarUri) {
+        contact?.let { resolvedContact ->
+            AppShortcuts.recordRecentChat(
+                context = context,
+                accountEmail = profile.email,
+                contactId = resolvedContact.id,
+                displayName = resolvedContact.displayName.messengerPlusPlainText(),
+                avatarUri = resolvedContact.avatarUri,
+            )
+        }
+    }
+
+    var nudgeShakeCount by rememberSaveable(contactId) { mutableIntStateOf(0) }
+    LaunchedEffect(contactId, lifecycleOwner) {
+        observeConversationReadState(repository, contactId, lifecycleOwner.lifecycle)
+    }
+    LaunchedEffect(contactId, lifecycleOwner) {
+        observeConversationNudgeShakes(repository, contactId, lifecycleOwner.lifecycle) {
+            nudgeShakeCount++
+        }
+    }
+
+    val soundPlayer = rememberEmotionSoundController()
+    val plusSettings by remember(context) { MessengerPlusPrefs.state(context) }.collectAsState()
+    LaunchedEffect(contactId, lifecycleOwner, soundPlayer, plusSettings.playEmotionSounds) {
+        if (!plusSettings.playEmotionSounds) soundPlayer.stop()
+        lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            repository.pendingEmotionSounds.collect { pending ->
+                pending[contactId]?.let { message ->
+                    repository.consumePendingEmotionSound(contactId, message.id)
+                    if (plusSettings.playEmotionSounds && System.currentTimeMillis() - message.timestampMillis in 0..60_000)
+                        message.emotionSound?.sound?.let(soundPlayer::play)
+                }
+            }
+        }
+    }
+
+    val photoShares by repository.photoShares.collectAsState()
+    val gameSessions by repository.gameSessions.collectAsState()
+    var playingWink by remember(contactId) { mutableStateOf<ChatMessage?>(null) }
+    LaunchedEffect(contactId, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            repository.pendingWinks.collect { pending ->
+                pending[contactId]?.let { message ->
+                    repository.consumePendingWink(contactId, message.id)
+                    playingWink = message
+                }
+            }
+        }
+    }
+    playingWink?.let { message -> androidx.compose.runtime.key(message.id) {
+        message.wink?.let { WinkOverlay(it, { playingWink = null }, automatic = true) }
+    } }
+
+    ChatScreen(
+        photoShare = photoShares[contactId],
+        gameSession = gameSessions[contactId.lowercase(java.util.Locale.ROOT)] ?: gameSessions[contactId],
+        ownName = profile.username.ifBlank { profile.email },
+        onSendEmotionSound = { repository.sendEmotionSound(contactId, it) },
+        onSendWink = { wink, bytes -> repository.sendWink(contactId, wink, bytes) },
+        otherUnreadCount = otherUnreadCount(contacts, contactId),
+        nudgeCooldownMillis = nudgeCooldownMillis,
+        nudgeShakeCount = nudgeShakeCount,
+        nativeStyle = textStyles[contactId.lowercase(java.util.Locale.ROOT)] ?: NativeTextStyle(),
+        onNativeStyleChange = { repository.updateTextStyle(contactId, it) },
+        onSizeNoticeRequested = { repository.markTextSizeNoticeShown(contactId) },
+        draft = drafts[contactId].orEmpty(),
+        onDraftChange = { repository.updateDraft(contactId, it) },
+        contact = contact ?: lastKnownContact?.copy(presence = Presence.Offline),
+        ownPresence = profile.presence,
+        ownEmail = profile.email,
+        isConversationAvailable = contact != null,
+        messages = conversation?.messages.orEmpty(),
+        isHistoryLoaded = conversation?.isHistoryLoaded == true,
+        canLoadOlderMessages = conversation?.canLoadOlderMessages == true,
+        isTyping = conversation?.isContactTyping == true,
+        onBack = onBack,
+        onSendMessage = { text, renderedEmoticonRanges ->
+            repository.sendMessage(contactId, text, renderedEmoticonRanges)
+        },
+        onRetryMessage = { repository.retryMessage(contactId, it.id) },
+        onSendTyping = { repository.sendTyping(contactId) },
+        onSendNudge = { repository.sendNudge(contactId) },
+        onSendInk = { repository.sendInk(contactId, it) },
+        onSendVoiceClip = { repository.sendVoiceClip(contactId, it) },
+        onLoadOlderMessages = { repository.loadOlderMessages(contactId) },
+    )
+}
+
+@Composable
+internal fun ChatScreen(
+    draft: String,
+    onDraftChange: (String) -> Unit,
+    contact: Contact?,
+    isConversationAvailable: Boolean = true,
+    messages: List<ChatMessage>,
+    isHistoryLoaded: Boolean,
+    canLoadOlderMessages: Boolean,
+    isTyping: Boolean,
+    onBack: () -> Unit,
+    onSendMessage: (String, List<MsnEmoticonRange>?) -> Unit,
+    onRetryMessage: (ChatMessage) -> Unit,
+    onSendTyping: () -> Unit,
+    onSendNudge: () -> Unit,
+    onSendInk: (InkDrawing) -> Unit = {},
+    onSendEmotionSound: suspend (com.impactomsn.app.protocol.EmotionSound) -> Result<Unit> = { Result.failure(UnsupportedOperationException()) },
+    onSendWink: suspend (WinkReference, ByteArray) -> Result<Unit> = { _, _ -> Result.failure(UnsupportedOperationException()) },
+    onSendVoiceClip: suspend (com.impactomsn.app.protocol.VoiceClip) -> Result<Unit> = {
+        Result.failure(UnsupportedOperationException())
+    },
+    onLoadOlderMessages: suspend () -> Unit,
+    nativeStyle: NativeTextStyle = NativeTextStyle(),
+    onNativeStyleChange: (NativeTextStyle) -> Unit = {},
+    onSizeNoticeRequested: () -> Boolean = { false },
+    nudgeShakeCount: Int = 0,
+    otherUnreadCount: Int = 0,
+    nudgeCooldownMillis: Long = 0L,
+    ownPresence: Presence = Presence.Online,
+    ownEmail: String = "",
+    ownName: String = "",
+    photoShare: com.impactomsn.app.data.PhotoShare? = null,
+    gameSession: com.impactomsn.app.data.GameSession? = null,
+) {
+    val groupFeatures = contact?.takeIf { it.isGroup }?.groupFeatures(ownEmail)
+    val nudgeShakeState = rememberNudgeShakeState()
+    var handledNudgeShakeCount by rememberSaveable(contact?.id) { mutableIntStateOf(0) }
+    LaunchedEffect(nudgeShakeCount) {
+        if (nudgeShakeCount > handledNudgeShakeCount) {
+            handledNudgeShakeCount = nudgeShakeCount
+            nudgeShakeState.trigger()
+        }
+    }
+    val listState = rememberLazyListState()
+    val topBarColor = chatTopBarContainerColor(listState)
+    val scenePresentation = LocalScenePresentation.current
+    val scene = LocalMessengerScene.current.takeIf { scenePresentation.showInConversations }
+    val sceneInk = sceneContentColor()
+    val sceneView = LocalView.current
+    SideEffect {
+        (sceneView.context as? android.app.Activity)?.window?.let { window ->
+            androidx.core.view.WindowCompat.getInsetsController(window, sceneView)
+                .isAppearanceLightStatusBars = if (scene != null) !scenePresentation.darkTint else !scenePresentation.isDark
+        }
+    }
+    val context = LocalContext.current
+    val emoticonSettings by remember(context) { EmoticonPrefs.state(context) }.collectAsState()
+    val messengerPlusEnabled = LocalMessengerPlusEnabled.current
+    LaunchedEffect(messages.lastOrNull()?.id, isTyping) {
+        if (messages.isNotEmpty()) listState.animateScrollToItem(0)
+    }
+    LaunchedEffect(listState, canLoadOlderMessages, isHistoryLoaded) {
+        if (!isHistoryLoaded || !canLoadOlderMessages) return@LaunchedEffect
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val oldestVisibleIndex = layoutInfo.visibleItemsInfo.maxOfOrNull { it.index } ?: 0
+            layoutInfo.totalItemsCount > 0 &&
+                    oldestVisibleIndex >= layoutInfo.totalItemsCount - HISTORY_PAGE_LOAD_AHEAD
+        }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect { onLoadOlderMessages() }
+    }
+    val imeInsets = WindowInsets.ime
+    val density = LocalDensity.current
+    LaunchedEffect(listState, imeInsets, density) {
+        var previousImeHeight = 0
+        var previousViewportHeight = 0
+        snapshotFlow {
+            imeInsets.getBottom(density) to listState.layoutInfo.viewportSize.height
+        }.collectLatest { (imeHeight, viewportHeight) ->
+            val keyboardOpening = imeHeight > previousImeHeight ||
+                    (imeHeight > 0 && viewportHeight < previousViewportHeight)
+            previousImeHeight = imeHeight
+            previousViewportHeight = viewportHeight
+            if (keyboardOpening) {
+                // Follow the keyboard directly; index zero is the newest message.
+                listState.scrollToItem(0)
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .offset { nudgeShakeState.offsetDp.toIntOffset(this) }
+            .testTag(CHAT_SCREEN_SHAKE_CONTAINER_TAG),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        snackbarHost = { ContactPresenceSnackbar(contact, isConversationAvailable, ownPresence) },
+        topBar = {
+            Column {
+                SceneBackdrop(scene) {
+                    TopAppBar(
+                        modifier = Modifier.clickable(
+                            enabled = contact != null && isConversationAvailable,
+                            onClickLabel = stringResource(
+                                if (contact?.isGroup == true) R.string.chat_view_group_members else R.string.chat_view_contact_profile,
+                            ),
+                            role = androidx.compose.ui.semantics.Role.Button,
+                        ) {
+                            contact?.let {
+                                if (it.isGroup) context.startActivity(GroupDetailsActivity.createIntent(context, it.id))
+                                else context.startActivity(
+                                    ContactProfileActivity.createIntent(
+                                        context,
+                                        it.id
+                                    )
+                                )
+                            }
+                        },
+                        colors = run {
+                            val msnBar = scene == null && !isMsnDark()
+                            TopAppBarDefaults.topAppBarColors(
+                                containerColor = if (scene != null) Color.Transparent else if (msnBar) MsnPalette.TitleBlue else topBarColor,
+                                scrolledContainerColor = if (scene != null) Color.Transparent else if (msnBar) MsnPalette.TitleBlueDeep else topBarColor,
+                                navigationIconContentColor = if (scene != null) sceneInk else if (msnBar) Color.White else MaterialTheme.colorScheme.onSurface,
+                                titleContentColor = if (scene != null) sceneInk else if (msnBar) Color.White else MaterialTheme.colorScheme.onSurface,
+                                actionIconContentColor = if (scene != null) sceneInk else if (msnBar) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        navigationIcon = {
+                            val otherUnreadsDescription = if (otherUnreadCount > 0) {
+                                stringResource(R.string.chat_unread_other_chats, otherUnreadCount)
+                            } else null
+                            IconButton(
+                                onClick = onBack,
+                                modifier = Modifier.semantics {
+                                    if (otherUnreadCount > 0) {
+                                        otherUnreadsDescription?.let { stateDescription = it }
+                                    }
+                                },
+                            ) {
+                                BadgedBox(badge = {
+                                    if (otherUnreadCount > 0) Badge(Modifier.testTag("other_chats_unread_badge")) {
+                                        Text(if (otherUnreadCount > 99) "99+" else otherUnreadCount.toString())
+                                    }
+                                }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.chat_back))
+                                }
+                            }
+                        },
+                        actions = {
+                            val callable = isConversationAvailable && contact != null && !contact.isGroup &&
+                                contact.presence.isOnline && ownPresence.isOnline
+                            IconButton(
+                                enabled = callable,
+                                onClick = { contact?.email?.let { context.startActivity(com.impactomsn.app.calls.CallActivity.outgoingIntent(context, it, false)) } },
+                            ) { Icon(Icons.Default.Call, contentDescription = stringResource(R.string.chat_voice_call)) }
+                            IconButton(
+                                enabled = callable,
+                                onClick = { contact?.email?.let { context.startActivity(com.impactomsn.app.calls.CallActivity.outgoingIntent(context, it, true)) } },
+                            ) { Icon(Icons.Default.Videocam, contentDescription = stringResource(R.string.chat_video_call)) }
+                            SharingMenu(contact?.id.orEmpty(), enabled = callable)
+                        },
+                        title = {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Avatar(
+                                    name = contact?.displayName?.messengerPlusPlainText() ?: stringResource(R.string.chat_fallback_contact),
+                                    avatarUri = contact?.avatarUri,
+                                    presence = contact?.presence ?: Presence.Offline,
+                                    modifier = Modifier.size(42.dp),
+                                    showPresenceIndicator = false,
+                                )
+                                Column {
+                                    MessengerPlusText(
+                                        text = contact?.displayName ?: stringResource(R.string.chat_fallback_conversation),
+                                        sceneGlow = scene != null,
+                                        color = if (scene != null) sceneInk else Color.Unspecified,
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                        ),
+                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        PresenceDot(
+                                            presence = contact?.presence ?: Presence.Offline,
+                                            modifier = Modifier.size(7.dp),
+                                        )
+                                        SceneText(
+                                            text = if (isTyping) {
+                                                stringResource(R.string.chat_status_typing)
+                                            } else if (contact?.isGroup == true) {
+                                                pluralStringResource(
+                                                    R.plurals.chat_group_member_count,
+                                                    contact.joinedMembers.size,
+                                                )
+                                            } else {
+                                                contact?.presence?.let { presence ->
+                                                    when (presence) {
+                                                        Presence.Online -> stringResource(R.string.chat_status_online)
+                                                        Presence.Busy -> stringResource(R.string.chat_status_busy)
+                                                        Presence.Away -> stringResource(R.string.chat_status_away)
+                                                        Presence.Offline -> stringResource(R.string.chat_status_offline)
+                                                    }
+                                                } ?: stringResource(R.string.chat_status_offline)
+                                            },
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (scene != null) sceneInk else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
+                if (SessionPrefs.isMockServerActive()) MockServerBanner()
+            }
+        },
+        floatingActionButton = {
+            if (contact != null && (photoShare != null || gameSession != null)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    if (photoShare != null) PhotoSharingHost(contact.id, photoShare)
+                    if (gameSession != null) {
+                        GameHost(
+                            contactId = contact.id,
+                            session = gameSession,
+                            localDisplayName = ownName.ifBlank { ownEmail },
+                            localEmail = ownEmail,
+                            peerDisplayName = contact.displayName.ifBlank { contact.email },
+                            peerEmail = contact.email,
+                        )
+                    }
+                }
+            }
+        },
+        bottomBar = {
+            MessageComposer(
+                nativeStyle = nativeStyle,
+                onNativeStyleChange = onNativeStyleChange,
+                onSizeNoticeRequested = onSizeNoticeRequested,
+                enabled = isConversationAvailable && (contact?.isGroup != true || contact.presence.isOnline),
+                handwritingEnabled = isConversationAvailable && contact?.presence?.isOnline != false &&
+                    (contact?.isGroup != true || groupFeatures?.inkFormat != null),
+                voiceClipsVisible = contact?.isGroup != true,
+                voiceClipsEnabled = isConversationAvailable && contact?.isBlocked != true && contact?.presence?.isOnline != false,
+                onSendVoiceClip = onSendVoiceClip,
+                winksMenuEnabled = groupFeatures?.winks != false,
+                winksEnabled = isConversationAvailable && contact?.isBlocked != true && contact?.presence?.isOnline == true &&
+                    groupFeatures?.winks != false,
+                onSendEmotionSound = onSendEmotionSound,
+                emotionSoundsEnabled = isConversationAvailable && contact?.isBlocked != true,
+                onSendWink = onSendWink,
+                nudgeEnabled = isConversationAvailable && contact?.presence?.isOnline != false && nudgeCooldownMillis == 0L,
+                nudgeCooldownMillis = nudgeCooldownMillis,
+                draft = draft,
+                onDraftChange = {
+                    onDraftChange(it)
+                    if (it.hasMessengerPlusVisibleContent()) onSendTyping()
+                },
+                onSendMessage = {
+                    val message = draft.toMsnOutgoingMessage(
+                        convertTypedShortcuts = emoticonSettings.convertTypedShortcuts,
+                        messengerPlusEnabled = messengerPlusEnabled,
+                    )
+                    if (message.text.isNotEmpty()) {
+                        onSendMessage(message.text, message.renderedEmoticonRanges)
+                        onDraftChange("")
+                    }
+                },
+                onSendNudge = {
+                    nudgeShakeState.trigger()
+                    onSendNudge()
+                },
+                onSendInk = onSendInk,
+                onSendTyping = onSendTyping,
+                emoticonSettings = emoticonSettings,
+                messengerPlusEnabled = messengerPlusEnabled,
+            )
+        },
+    ) { innerPadding ->
+        ChatMessageList(
+            messages = messages,
+            listState = listState,
+            emoticonSettings = emoticonSettings,
+            innerPadding = innerPadding,
+            isGroup = contact?.isGroup == true,
+            isHistoryLoaded = isHistoryLoaded,
+            onRetryMessage = onRetryMessage,
+            textSize = nativeStyle.size,
+        )
+    }
+    }
+}
+
+private const val HISTORY_PAGE_LOAD_AHEAD = 20
+
+@Composable
+internal fun chatTopBarContainerColor(listState: LazyListState): Color {
+    // The reversed list reaches the visual top when it cannot scroll forward.
+    // Use that boundary directly so direction changes and bottom overscroll cannot
+    // reset the bar's color while older messages are still above the viewport.
+    val color by animateColorAsState(
+        targetValue = if (listState.canScrollForward) {
+            MaterialTheme.colorScheme.surfaceContainer
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        label = "Chat top bar color",
+    )
+    return color
+}
+
+@Composable
+internal fun ChatMessageList(
+    messages: List<ChatMessage>,
+    listState: LazyListState,
+    emoticonSettings: EmoticonSettings,
+    innerPadding: PaddingValues,
+    modifier: Modifier = Modifier,
+    isGroup: Boolean = false,
+    isHistoryLoaded: Boolean = true,
+    onRetryMessage: (ChatMessage) -> Unit = {},
+    textSize: Int = NativeTextStyle.DEFAULT_SIZE,
+) {
+    val layoutDirection = LocalLayoutDirection.current
+    // Index zero is the bottom anchor, even when history arrives after composition.
+    // The first measure and subsequent IME resizes therefore show the newest message
+    // without a corrective scroll. Storage and bubble grouping stay chronological.
+    val dayLabels = rememberChatDayLabels()
+    val timeline by remember(messages, dayLabels.timeZone) {
+        derivedStateOf { chatTimeline(messages, dayLabels.timeZone) }
+    }
+    val stickyDayAlpha = rememberChatStickyDayAlpha(listState)
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(top = innerPadding.calculateTopPadding())
+            .consumeWindowInsets(innerPadding),
+    ) {
+        LazyColumn(
+            state = listState,
+            reverseLayout = true,
+            verticalArrangement = Arrangement.Top,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = innerPadding.calculateStartPadding(layoutDirection) + 14.dp,
+                top = 14.dp,
+                end = innerPadding.calculateEndPadding(layoutDirection) + 14.dp,
+                bottom = innerPadding.calculateBottomPadding() + 14.dp,
+            ),
+        ) {
+            if (isHistoryLoaded && messages.isEmpty()) {
+                item(key = "empty-conversation") {
+                    Text(
+                        text = stringResource(R.string.empty_conversation_warning),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            itemsIndexed(
+                timeline,
+                key = { _, item -> item.key },
+                contentType = { _, item -> if (item is ChatTimelineItem.DayDivider) "day" else "message" },
+            ) { index, item ->
+                if (item is ChatTimelineItem.DayDivider) {
+                    Box(
+                        Modifier.fillMaxWidth().padding(vertical = ChatDayChipSpacing),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        ChatDayChip(
+                            dayLabels.label(item.dayMillis),
+                            modifier = Modifier.graphicsLayer {
+                                val layout = listState.layoutInfo
+                                val row = layout.visibleItemsInfo.firstOrNull { it.key == item.key }
+                                // The overlay takes over this chip once it passes the visual top.
+                                alpha = if (stickyDayAlpha.value > 0f && row != null &&
+                                    layout.viewportEndOffset - row.offset - row.size < 0
+                                ) 0f else 1f
+                            },
+                        )
+                    }
+                    return@itemsIndexed
+                }
+                val message = (item as ChatTimelineItem.Message).message
+                val previous = (timeline.getOrNull(index + 1) as? ChatTimelineItem.Message)?.message
+                val next = (timeline.getOrNull(index - 1) as? ChatTimelineItem.Message)?.message
+                val joinsPrevious = previous.groupsWith(message)
+                val joinsNext = message.groupsWith(next)
+                MessageBubble(
+                    message = message,
+                    textSize = textSize,
+                    useOriginalEmoticons = emoticonSettings.useOriginalEmoticons,
+                    showSenderName = isGroup,
+                    joinsPrevious = joinsPrevious,
+                    joinsNext = joinsNext,
+                    onRetry = { onRetryMessage(message) },
+                    modifier = Modifier.padding(
+                        top = when {
+                            previous == null -> 0.dp
+                            joinsPrevious -> 3.dp
+                            else -> 12.dp
+                        },
+                    ),
+                )
+            }
+        }
+        ChatStickyDay(timeline, listState, dayLabels, stickyDayAlpha)
+        ChatScrollToLatestButton(
+            listState = listState,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(
+                    end = innerPadding.calculateEndPadding(layoutDirection) + 16.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 12.dp,
+                ),
+        )
+    }
+}
+
+@Composable
+internal fun MessageComposer(
+    enabled: Boolean = true,
+    handwritingEnabled: Boolean = enabled,
+    emotionSoundsEnabled: Boolean = enabled,
+    winksMenuEnabled: Boolean = true,
+    winksEnabled: Boolean = enabled,
+    voiceClipsVisible: Boolean = true,
+    voiceClipsEnabled: Boolean = enabled,
+    onSendEmotionSound: suspend (com.impactomsn.app.protocol.EmotionSound) -> Result<Unit> = { Result.failure(UnsupportedOperationException()) },
+    onSendWink: suspend (WinkReference, ByteArray) -> Result<Unit> = { _, _ -> Result.failure(UnsupportedOperationException()) },
+    onSendVoiceClip: suspend (com.impactomsn.app.protocol.VoiceClip) -> Result<Unit> = {
+        Result.failure(UnsupportedOperationException())
+    },
+    nudgeEnabled: Boolean = enabled,
+    nudgeCooldownMillis: Long = 0L,
+    draft: String,
+    onDraftChange: (String) -> Unit,
+    onSendMessage: () -> Unit,
+    onSendNudge: () -> Unit,
+    onSendInk: (InkDrawing) -> Unit = {},
+    onSendTyping: () -> Unit = {},
+    emoticonSettings: EmoticonSettings,
+    messengerPlusEnabled: Boolean,
+    nativeStyle: NativeTextStyle,
+    onNativeStyleChange: (NativeTextStyle) -> Unit,
+    onSizeNoticeRequested: () -> Boolean,
+) {
+    val editorController = remember { MessengerPlusEditorController() }
+    val emoticonSheet = rememberEmoticonSheetState()
+    val colorSheet = rememberMessengerPlusColorSheetState()
+    val keyboardSheetHost = LocalKeyboardSheetHost.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var showEmotionSounds by remember { mutableStateOf(false) }
+    var showWinks by remember { mutableStateOf(false) }
+    var showTextStyle by remember { mutableStateOf(false) }
+    var handwritingMode by rememberSaveable { mutableStateOf(false) }
+    val handwritingState = rememberHandwritingCanvasState()
+    fun dismissComposerSheets(dismissKeyboardSheetHost: Boolean = false) {
+        colorSheet.dismiss()
+        emoticonSheet.dismiss()
+        showEmotionSounds = false
+        showWinks = false
+        showTextStyle = false
+        if (dismissKeyboardSheetHost) keyboardSheetHost?.dismiss()
+    }
+    LaunchedEffect(enabled, handwritingEnabled, messengerPlusEnabled) {
+        if (!enabled || !messengerPlusEnabled) colorSheet.dismiss()
+        if (!handwritingEnabled) handwritingMode = false
+        if (!enabled) {
+            dismissComposerSheets(dismissKeyboardSheetHost = true)
+            editorController.hideKeyboard()
+        }
+    }
+    LaunchedEffect(handwritingMode) {
+        if (handwritingMode) {
+            dismissComposerSheets(dismissKeyboardSheetHost = true)
+            focusManager.clearFocus()
+            keyboardController?.hide()
+            editorController.hideKeyboard()
+        }
+    }
+    EmoticonPanel(
+        state = emoticonSheet,
+        useOriginalEmoticons = emoticonSettings.useOriginalEmoticons,
+        canDelete = draft.isNotEmpty(),
+        onFallbackInsert = { token -> onDraftChange(draft + token) },
+    )
+    EmotionSoundPicker(showEmotionSounds, enabled && emotionSoundsEnabled, { showEmotionSounds = false }, onSendEmotionSound)
+    LaunchedEffect(enabled, emotionSoundsEnabled) { if (!enabled || !emotionSoundsEnabled) showEmotionSounds = false }
+    WinkPicker(showWinks, winksEnabled, { showWinks = false }, onSendWink)
+    LaunchedEffect(enabled, winksMenuEnabled) { if (!enabled || !winksMenuEnabled) showWinks = false }
+    MessengerPlusColorSheet(colorSheet)
+    if (showTextStyle) NativeTextStyleSheet(
+        style = nativeStyle,
+        onStyleChange = onNativeStyleChange,
+        onSizeNoticeRequested = onSizeNoticeRequested,
+        onDismissRequest = { showTextStyle = false },
+    )
+    val composerBackgroundColor = MaterialTheme.colorScheme.surface
+
+    val bottomInsets = WindowInsets.safeDrawing
+        .only(WindowInsetsSides.Bottom)
+        .union(keyboardSheetWindowInsets())
+    Column(
+        modifier = Modifier.fillMaxWidth().background(composerBackgroundColor).testTag("chat_composer"),
+    ) {
+        if (enabled && nudgeCooldownMillis > 0L) {
+            Text(
+                text = if (nudgeCooldownMillis == Long.MAX_VALUE) stringResource(R.string.notification_sending_nudge) else
+                    stringResource(R.string.chat_nudge_cooldown, (nudgeCooldownMillis + 999) / 1_000),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().background(composerBackgroundColor)
+                    .padding(start = 16.dp, top = 6.dp, end = 16.dp),
+            )
+        }
+        BackHandler(enabled = handwritingMode) {
+            handwritingMode = false
+        }
+        AnimatedContent(
+            targetState = handwritingMode,
+            transitionSpec = {
+                val spatialSpec = MotionScheme.expressive().defaultSpatialSpec<IntSize>()
+                val effectsSpec = MotionScheme.expressive().defaultEffectsSpec<Float>()
+                val offsetSpec = MotionScheme.expressive().defaultSpatialSpec<IntOffset>()
+                if (targetState) {
+                    (fadeIn(animationSpec = effectsSpec) +
+                        expandVertically(animationSpec = spatialSpec, expandFrom = Alignment.Bottom) +
+                        slideInVertically(animationSpec = offsetSpec) { it / 3 })
+                        .togetherWith(
+                            fadeOut(animationSpec = effectsSpec) +
+                                shrinkVertically(animationSpec = spatialSpec, shrinkTowards = Alignment.Bottom),
+                        )
+                } else {
+                    (fadeIn(animationSpec = effectsSpec) +
+                        expandVertically(animationSpec = spatialSpec, expandFrom = Alignment.Bottom))
+                        .togetherWith(
+                            fadeOut(animationSpec = effectsSpec) +
+                                shrinkVertically(animationSpec = spatialSpec, shrinkTowards = Alignment.Bottom) +
+                                slideOutVertically(animationSpec = offsetSpec) { it / 3 },
+                        )
+                }.using(
+                    SizeTransform(
+                        clip = false,
+                        sizeAnimationSpec = { _, _ -> spatialSpec },
+                    ),
+                )
+            },
+            label = "handwritingComposerTransition",
+        ) { isHandwriting ->
+            if (isHandwriting) {
+                HandwritingComposerPanel(
+                    state = handwritingState,
+                    enabled = handwritingEnabled,
+                    onSendInk = onSendInk,
+                    onSwitchToTypeMode = { handwritingMode = false },
+                    onStrokeActivity = onSendTyping,
+                    toolbarVisible = transition.targetState == EnterExitState.Visible,
+                    modifier = Modifier.background(composerBackgroundColor),
+                )
+            } else {
+                VoiceClipComposer(
+                    enabled = enabled && voiceClipsEnabled,
+                    voiceButtonVisible = voiceClipsVisible && !draft.hasMessengerPlusVisibleContent(),
+                    onSend = onSendVoiceClip,
+                    onRecordingStarted = {
+                        dismissComposerSheets(dismissKeyboardSheetHost = true)
+                    },
+                    onRecordingFinished = { editorController.hideKeyboard() },
+                    textComposer = {
+                        Surface(
+                            shape = MaterialTheme.shapes.extraLarge,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .requiredHeightIn(min = 56.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .pointerInput(editorController, enabled) {
+                                        detectTapGestures {
+                                            if (!enabled) return@detectTapGestures
+                                            editorController.requestFocusAndShowKeyboard()
+                                        }
+                                    }
+                                    .padding(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                EmoticonAndHandwritingMenuButton(
+                                    enabled = enabled,
+                                    handwritingEnabled = handwritingEnabled,
+                                    winksEnabled = winksMenuEnabled,
+                                    soundsEnabled = emotionSoundsEnabled,
+                                    onSelectEmotionSounds = {
+                                        dismissComposerSheets()
+                                        handwritingMode = false
+                                        editorController.hideKeyboard()
+                                        showEmotionSounds = true
+                                    },
+                                    onSelectWinks = {
+                                        dismissComposerSheets()
+                                        handwritingMode = false
+                                        editorController.hideKeyboard()
+                                        showWinks = true
+                                    },
+                                    emoticonSheetVisible = emoticonSheet.visible,
+                                    onToggleEmoticons = { emoticonSheet.toggle(editorController) },
+                                    onSelectEmoticons = { emoticonSheet.open(editorController) },
+                                    onSelectHandwriting = {
+                                        dismissComposerSheets(dismissKeyboardSheetHost = true)
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        editorController.hideKeyboard()
+                                        handwritingMode = true
+                                    },
+                                )
+                                if (!draft.hasMessengerPlusVisibleContent()) {
+                                    IconButton(
+                                        onClick = onSendNudge,
+                                        enabled = nudgeEnabled,
+                                    ) {
+                                        Icon(
+                                            Icons.Default.NotificationsActive,
+                                            contentDescription = stringResource(R.string.chat_send_nudge),
+                                        )
+                                    }
+                                }
+                                MsnEmoticonEditor(
+                                    nativeStyle = nativeStyle,
+                                    onTextStyle = {
+                                        dismissComposerSheets(dismissKeyboardSheetHost = true)
+                                        editorController.hideKeyboard()
+                                        showTextStyle = true
+                                    },
+                                    enabled = enabled,
+                                    value = draft,
+                                    onValueChange = onDraftChange,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .requiredHeightIn(min = 48.dp),
+                                    convertTypedShortcuts = emoticonSettings.convertTypedShortcuts,
+                                    useOriginalEmoticons = emoticonSettings.useOriginalEmoticons,
+                                    messengerPlusEnabled = messengerPlusEnabled,
+                                    controller = editorController,
+                                    onColors = if (messengerPlusEnabled) {
+                                        { colorSheet.open(editorController) }
+                                    } else {
+                                        null
+                                    },
+                                )
+                            }
+                        }
+                    },
+                    sendButton = {
+                        FilledIconButton(
+                            modifier = Modifier
+                                .requiredHeight(56.dp)
+                                .aspectRatio(1f, true),
+                            onClick = onSendMessage,
+                            shapes = IconButtonDefaults.shapes(),
+                            enabled = enabled && draft.hasMessengerPlusVisibleContent(),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.chat_send_message))
+                        }
+                    },
+                )
+            }
+        }
+        Spacer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsBottomHeight(bottomInsets),
+        )
+    }
+}
+
+private enum class ComposerEmoticonMenuOption {
+    Emoticons,
+    Handwriting,
+    Winks,
+    EmotionSounds,
+}
+
+@Composable
+private fun EmoticonAndHandwritingMenuButton(
+    enabled: Boolean,
+    handwritingEnabled: Boolean,
+    winksEnabled: Boolean,
+    soundsEnabled: Boolean,
+    onSelectEmotionSounds: () -> Unit,
+    onSelectWinks: () -> Unit,
+    emoticonSheetVisible: Boolean,
+    onToggleEmoticons: () -> Unit,
+    onSelectEmoticons: () -> Unit,
+    onSelectHandwriting: () -> Unit,
+) {
+    val density = LocalDensity.current
+    val hapticFeedback = LocalHapticFeedback.current
+    val openEmoticonMenuLongPressLabel = stringResource(R.string.chat_open_emoticon_menu)
+    val horizontalHitPadPx = with(density) { 36.dp.toPx() }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var draggedOption by remember { mutableStateOf<ComposerEmoticonMenuOption?>(null) }
+    var suppressNextClick by remember { mutableStateOf(false) }
+    var anchorCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var emoticonsItemBounds by remember { mutableStateOf<Rect?>(null) }
+    var handwritingItemBounds by remember { mutableStateOf<Rect?>(null) }
+    var winksItemBounds by remember { mutableStateOf<Rect?>(null) }
+    var soundsItemBounds by remember { mutableStateOf<Rect?>(null) }
+    var lastDragScreenOffset by remember { mutableStateOf<Offset?>(null) }
+    var hasDraggedAfterLongPress by remember { mutableStateOf(false) }
+    val groupInteractionSource = remember { MutableInteractionSource() }
+    val emoticonsItemInteractionSource = remember { MutableInteractionSource() }
+    val handwritingItemInteractionSource = remember { MutableInteractionSource() }
+    val winksItemInteractionSource = remember { MutableInteractionSource() }
+    val soundsItemInteractionSource = remember { MutableInteractionSource() }
+
+    LaunchedEffect(draggedOption == ComposerEmoticonMenuOption.Emoticons) {
+        if (draggedOption == ComposerEmoticonMenuOption.Emoticons) {
+            val press = PressInteraction.Press(Offset.Zero)
+            emoticonsItemInteractionSource.emit(press)
+        }
+    }
+    LaunchedEffect(draggedOption == ComposerEmoticonMenuOption.Handwriting) {
+        if (draggedOption == ComposerEmoticonMenuOption.Handwriting) {
+            val press = PressInteraction.Press(Offset.Zero)
+            handwritingItemInteractionSource.emit(press)
+        }
+    }
+
+    val resolveOptionAtScreenOffset: (Offset?) -> ComposerEmoticonMenuOption? = { screenPos ->
+        if (screenPos == null) {
+            null
+        } else {
+            val emoBounds = emoticonsItemBounds
+            val hwBounds = handwritingItemBounds
+            val winkBounds = winksItemBounds
+            val soundBounds = soundsItemBounds
+            when {
+                emoBounds != null &&
+                    screenPos.y in emoBounds.top..emoBounds.bottom &&
+                    screenPos.x in (emoBounds.left - horizontalHitPadPx)..(emoBounds.right + horizontalHitPadPx) ->
+                    ComposerEmoticonMenuOption.Emoticons
+                handwritingEnabled &&
+                    hwBounds != null &&
+                    screenPos.y in hwBounds.top..hwBounds.bottom &&
+                    screenPos.x in (hwBounds.left - horizontalHitPadPx)..(hwBounds.right + horizontalHitPadPx) ->
+                    ComposerEmoticonMenuOption.Handwriting
+                winksEnabled && winkBounds != null && screenPos.y in winkBounds.top..winkBounds.bottom &&
+                    screenPos.x in (winkBounds.left - horizontalHitPadPx)..(winkBounds.right + horizontalHitPadPx) -> ComposerEmoticonMenuOption.Winks
+                soundsEnabled && soundBounds != null && screenPos.y in soundBounds.top..soundBounds.bottom &&
+                    screenPos.x in (soundBounds.left - horizontalHitPadPx)..(soundBounds.right + horizontalHitPadPx) -> ComposerEmoticonMenuOption.EmotionSounds
+                else -> null
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .onGloballyPositioned { anchorCoordinates = it }
+            .pointerInput(enabled, handwritingEnabled, winksEnabled, soundsEnabled) {
+                if (!enabled) return@pointerInput
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    suppressNextClick = false
+                    val touchSlop = viewConfiguration.touchSlop
+                    var movedBeforeLongPress = false
+
+                    val releasedBeforeTimeout = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                        while (true) {
+                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                            val current = event.changes.firstOrNull { it.id == down.id }
+                                ?: event.changes.firstOrNull()
+                                ?: return@withTimeoutOrNull true
+                            if (!current.pressed) {
+                                return@withTimeoutOrNull true
+                            }
+                            if ((current.position - down.position).getDistance() > touchSlop) {
+                                movedBeforeLongPress = true
+                                return@withTimeoutOrNull true
+                            }
+                        }
+                    }
+
+                    if (releasedBeforeTimeout == null && !movedBeforeLongPress) {
+                        suppressNextClick = true
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        draggedOption = null
+                        hasDraggedAfterLongPress = false
+                        lastDragScreenOffset = null
+                        menuExpanded = true
+
+                        var lastLocalPos = down.position
+                        while (true) {
+                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                                ?: event.changes.firstOrNull()
+                                ?: break
+                            lastLocalPos = change.position
+                            val screenPos = anchorCoordinates
+                                ?.takeIf { it.isAttached }
+                                ?.localToScreen(change.position)
+                            lastDragScreenOffset = screenPos
+                            if ((change.position - down.position).getDistance() > touchSlop * 0.4f) {
+                                hasDraggedAfterLongPress = true
+                            }
+                            if (hasDraggedAfterLongPress) {
+                                draggedOption = resolveOptionAtScreenOffset(screenPos)
+                            }
+                            event.changes.forEach { it.consume() }
+                            if (!event.changes.any { it.pressed }) {
+                                break
+                            }
+                        }
+
+                        val finalScreenPos = anchorCoordinates
+                            ?.takeIf { it.isAttached }
+                            ?.localToScreen(lastLocalPos)
+                            ?: lastDragScreenOffset
+                        val chosenOption = if (hasDraggedAfterLongPress) {
+                            resolveOptionAtScreenOffset(finalScreenPos) ?: draggedOption
+                        } else {
+                            null
+                        }
+                        draggedOption = null
+                        lastDragScreenOffset = null
+                        hasDraggedAfterLongPress = false
+
+                        when (chosenOption) {
+                            ComposerEmoticonMenuOption.Emoticons -> {
+                                menuExpanded = false
+                                onSelectEmoticons()
+                            }
+                            ComposerEmoticonMenuOption.Handwriting -> {
+                                menuExpanded = false
+                                onSelectHandwriting()
+                            }
+                            ComposerEmoticonMenuOption.Winks -> { menuExpanded = false; onSelectWinks() }
+                            ComposerEmoticonMenuOption.EmotionSounds -> { menuExpanded = false; onSelectEmotionSounds() }
+                            null -> {
+                                // Finger released without dragging to an option: keep menu open.
+                            }
+                        }
+                    }
+                }
+            },
+    ) {
+        IconButton(
+            onClick = {
+                if (suppressNextClick) {
+                    suppressNextClick = false
+                } else if (menuExpanded) {
+                    menuExpanded = false
+                } else {
+                    onToggleEmoticons()
+                }
+            },
+            enabled = enabled,
+            modifier = Modifier
+                .testTag(EMOTICON_MODE_BUTTON_TAG)
+                .semantics {
+                    onLongClick(openEmoticonMenuLongPressLabel) {
+                        menuExpanded = true
+                        true
+                    }
+                },
+        ) {
+            Box(
+                modifier = Modifier.size(28.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (emoticonSheetVisible) {
+                    Icon(
+                        Icons.Default.Keyboard,
+                        contentDescription = stringResource(R.string.chat_show_keyboard),
+                        modifier = Modifier.size(22.dp),
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.EmojiEmotions,
+                        contentDescription = stringResource(R.string.chat_show_emoticons),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                val dotColor = LocalContentColor.current
+                val badgeBgColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                Canvas(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(width = 11.dp, height = 5.dp)
+                        .testTag(EMOTICON_LONG_PRESS_DOTS_TAG),
+                ) {
+                    val dotRadius = 1.25.dp.toPx()
+                    val haloRadius = 2.0.dp.toPx()
+                    val cy = size.height - dotRadius - 0.5.dp.toPx()
+                    val spacing = 3.2.dp.toPx()
+                    val centerX = size.width / 2f
+                    val xs = floatArrayOf(centerX - spacing, centerX, centerX + spacing)
+                    for (x in xs) {
+                        drawCircle(
+                            color = badgeBgColor,
+                            radius = haloRadius,
+                            center = Offset(x, cy),
+                        )
+                    }
+                    for (x in xs) {
+                        drawCircle(
+                            color = dotColor,
+                            radius = dotRadius,
+                            center = Offset(x, cy),
+                        )
+                    }
+                }
+            }
+        }
+
+        BackHandler(enabled = menuExpanded) {
+            menuExpanded = false
+            draggedOption = null
+        }
+        DropdownMenuPopup(
+            expanded = menuExpanded,
+            properties = PopupProperties(focusable = false),
+            onDismissRequest = {
+                menuExpanded = false
+                draggedOption = null
+            },
+        ) {
+            DropdownMenuGroup(
+                shapes = MenuDefaults.groupShape(0, 1),
+                interactionSource = groupInteractionSource,
+            ) {
+                val isEmoticonsHovered = draggedOption == ComposerEmoticonMenuOption.Emoticons
+                val isHandwritingHovered = draggedOption == ComposerEmoticonMenuOption.Handwriting
+                val isWinksHovered = draggedOption == ComposerEmoticonMenuOption.Winks
+                val isSoundsHovered = draggedOption == ComposerEmoticonMenuOption.EmotionSounds
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.insert_emoticon)) },
+                    leadingIcon = { Icon(Icons.Default.EmojiEmotions, contentDescription = null) },
+                    shape = MenuDefaults.leadingItemShape,
+                    interactionSource = emoticonsItemInteractionSource,
+                    colors = if (isEmoticonsHovered) {
+                        MenuDefaults.itemColors(
+                            textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            leadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    } else {
+                        MenuDefaults.itemColors()
+                    },
+                    modifier = Modifier
+                        .background(
+                            color = if (isEmoticonsHovered) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                Color.Transparent
+                            },
+                            shape = MenuDefaults.leadingItemShape,
+                        )
+                        .onGloballyPositioned { coords ->
+                            if (coords.isAttached) {
+                                val topLeft = coords.localToScreen(Offset.Zero)
+                                emoticonsItemBounds = Rect(
+                                    topLeft,
+                                    Size(coords.size.width.toFloat(), coords.size.height.toFloat()),
+                                )
+                                if (menuExpanded && hasDraggedAfterLongPress) {
+                                    draggedOption = resolveOptionAtScreenOffset(lastDragScreenOffset)
+                                }
+                            }
+                        }
+                        .testTag(EMOTICON_MENU_EMOTICONS_ITEM_TAG),
+                    onClick = {
+                        menuExpanded = false
+                        draggedOption = null
+                        onSelectEmoticons()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_handwriting)) },
+                    leadingIcon = { Icon(Icons.Default.Draw, contentDescription = null) },
+                    shape = MenuDefaults.middleItemShape,
+                    enabled = handwritingEnabled,
+                    interactionSource = handwritingItemInteractionSource,
+                    colors = if (isHandwritingHovered) {
+                        MenuDefaults.itemColors(
+                            textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            leadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    } else {
+                        MenuDefaults.itemColors()
+                    },
+                    modifier = Modifier
+                        .background(
+                            color = if (isHandwritingHovered) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                Color.Transparent
+                            },
+                            shape = MenuDefaults.middleItemShape,
+                        )
+                        .onGloballyPositioned { coords ->
+                            if (coords.isAttached) {
+                                val topLeft = coords.localToScreen(Offset.Zero)
+                                handwritingItemBounds = Rect(
+                                    topLeft,
+                                    Size(coords.size.width.toFloat(), coords.size.height.toFloat()),
+                                )
+                                if (menuExpanded && hasDraggedAfterLongPress) {
+                                    draggedOption = resolveOptionAtScreenOffset(lastDragScreenOffset)
+                                }
+                            }
+                        }
+                        .testTag(EMOTICON_MENU_HANDWRITING_ITEM_TAG),
+                    onClick = {
+                        menuExpanded = false
+                        draggedOption = null
+                        onSelectHandwriting()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_winks)) },
+                    leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                    shape = MenuDefaults.middleItemShape,
+                    enabled = winksEnabled,
+                    interactionSource = winksItemInteractionSource,
+                    colors = if (isWinksHovered) {
+                        MenuDefaults.itemColors(
+                            textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            leadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    } else {
+                        MenuDefaults.itemColors()
+                    },
+                    modifier = Modifier
+                        .background(
+                            color = if (isWinksHovered) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                Color.Transparent
+                            },
+                            shape = MenuDefaults.middleItemShape,
+                        )
+                        .onGloballyPositioned { coords ->
+                            if (coords.isAttached) {
+                                val topLeft = coords.localToScreen(Offset.Zero)
+                                winksItemBounds = Rect(
+                                    topLeft,
+                                    Size(coords.size.width.toFloat(), coords.size.height.toFloat()),
+                                )
+                                if (menuExpanded && hasDraggedAfterLongPress) {
+                                    draggedOption = resolveOptionAtScreenOffset(lastDragScreenOffset)
+                                }
+                            }
+                        }
+                        .testTag("wink_menu_item"),
+                    onClick = {
+                        menuExpanded = false
+                        draggedOption = null
+                        onSelectWinks()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_emotion_sounds)) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null) },
+                    shape = MenuDefaults.trailingItemShape,
+                    enabled = soundsEnabled,
+                    interactionSource = soundsItemInteractionSource,
+                    colors = if (isSoundsHovered) {
+                        MenuDefaults.itemColors(
+                            textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            leadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    } else {
+                        MenuDefaults.itemColors()
+                    },
+                    modifier = Modifier
+                        .background(
+                            color = if (isSoundsHovered) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                Color.Transparent
+                            },
+                            shape = MenuDefaults.trailingItemShape,
+                        )
+                        .onGloballyPositioned { coords ->
+                            if (coords.isAttached) {
+                                val topLeft = coords.localToScreen(Offset.Zero)
+                                soundsItemBounds = Rect(
+                                    topLeft,
+                                    Size(coords.size.width.toFloat(), coords.size.height.toFloat()),
+                                )
+                                if (menuExpanded && hasDraggedAfterLongPress) {
+                                    draggedOption = resolveOptionAtScreenOffset(lastDragScreenOffset)
+                                }
+                            }
+                        }
+                        .testTag("emotion_sound_menu_item"),
+                    onClick = {
+                        menuExpanded = false
+                        draggedOption = null
+                        onSelectEmotionSounds()
+                    },
+                )
+            }
+        }
+    }
+}
+
+internal class EmoticonSheetState {
+    private var activeController by mutableStateOf<MessengerPlusEditorController?>(null)
+    val visible: Boolean get() = activeController != null
+    val canDelete: Boolean get() = activeController?.hasContent == true
+
+    fun isOpenFor(controller: MessengerPlusEditorController): Boolean =
+        activeController === controller
+
+    fun open(controller: MessengerPlusEditorController) {
+        activeController = controller
+    }
+
+    fun dismiss() {
+        activeController = null
+    }
+
+    fun toggle(controller: MessengerPlusEditorController) {
+        // The keyboard covers the sheet; the scaffold then removes it.
+        if (activeController === controller) controller.requestFocusAndShowKeyboard()
+        else open(controller)
+    }
+
+    fun insert(emoticon: MsnEmoticonShortcut, onFallbackInsert: (Char) -> Unit = {}) {
+        val token = emoticon.menuToken
+        if (activeController?.insert(token.toString()) != true) {
+            onFallbackInsert(token)
+        }
+    }
+
+    fun deleteBackward() {
+        activeController?.deleteBackward()
+    }
+}
+
+@Composable
+internal fun rememberEmoticonSheetState(): EmoticonSheetState =
+    remember { EmoticonSheetState() }
+
+@Composable
+internal fun EmoticonPanel(
+    state: EmoticonSheetState,
+    useOriginalEmoticons: Boolean,
+    canDelete: Boolean = state.canDelete,
+    onSearchFocusChanged: (Boolean) -> Unit = {},
+    onFallbackInsert: (Char) -> Unit = {},
+) {
+    val searchFieldState = rememberTextFieldState()
+    val searchEditorController = remember { MessengerPlusEditorController() }
+    var searchFocused by remember { mutableStateOf(false) }
+    var leaveSearchRequested by remember { mutableStateOf(false) }
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val focusManager = LocalFocusManager.current
+    val leaveSearch: () -> Unit = {
+        if (searchFocused) {
+            leaveSearchRequested = true
+            searchEditorController.hideKeyboard()
+        }
+    }
+    LaunchedEffect(leaveSearchRequested, keyboardVisible) {
+        if (leaveSearchRequested && !keyboardVisible) {
+            focusManager.clearFocus()
+            searchEditorController.clearFocusAndHideKeyboard()
+            leaveSearchRequested = false
+        }
+    }
+    val query = searchFieldState.text.toString().withExpandedMsnMenuTokens().trim()
+    val emoticons = remember(query) {
+        MSN_EMOTICON_SHORTCUTS.filter { emoticon ->
+            emoticon.name.contains(query, ignoreCase = true) ||
+                emoticon.allShortcuts.any { it.contains(query, ignoreCase = true) } ||
+                emoticon.unicode.contains(query)
+        }
+    }
+    KeyboardPickerSheet(
+        visible = state.visible,
+        onDismissRequest = state::dismiss,
+        paneTitle = stringResource(R.string.emoticon_search_hint),
+        testTag = EMOTICON_PICKER_TAG,
+        expandable = true,
+        header = {
+            BackHandler(enabled = searchFocused, onBack = leaveSearch)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CompactSearchField(
+                    state = searchFieldState,
+                    placeholder = stringResource(R.string.emoticon_search_hint),
+                    clearContentDescription = stringResource(R.string.emoticon_search_clear),
+                    controller = searchEditorController,
+                    modifier = Modifier.weight(1f),
+                    onFocusChanged = {
+                        searchFocused = it
+                        onSearchFocusChanged(it)
+                    },
+                    leadingIcon = {
+                        if (searchFocused) {
+                            IconButton(onClick = leaveSearch) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = stringResource(R.string.emoticon_search_back),
+                                )
+                            }
+                        } else {
+                            Icon(Icons.Default.Search, contentDescription = null)
+                        }
+                    },
+                )
+                IconButton(
+                    onClick = state::deleteBackward,
+                    enabled = canDelete,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Backspace,
+                        contentDescription = stringResource(R.string.emoticon_backspace),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+        },
+    ) {
+        if (emoticons.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(R.string.emoticon_search_empty))
+            }
+        } else {
+            KeyboardSheetTileGrid(items = emoticons) { emoticon ->
+                TooltipBox(
+                    positionProvider =
+                        TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                    tooltip = {
+                        val tooltipText = "${emoticon.name}  ${emoticon.tooltipShortcut}"
+                        PlainTooltip(
+                            modifier = Modifier.semantics {
+                                liveRegion = LiveRegionMode.Assertive
+                                paneTitle = tooltipText
+                            },
+                        ) {
+                            Text(tooltipText)
+                        }
+                    },
+                    state = rememberTooltipState(),
+                ) {
+                    KeyboardSheetTile(
+                        onClick = {
+                            state.insert(emoticon, onFallbackInsert)
+                            leaveSearch()
+                            searchFieldState.edit { replace(0, length, "") }
+                        },
+                    ) {
+                        MsnEmoticonGlyph(
+                            emoticon = emoticon,
+                            useOriginalEmoticons = useOriginalEmoticons,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun ChatMessage?.groupsWith(next: ChatMessage?): Boolean =
+    this != null && next != null &&
+            author != MessageAuthor.System && author == next.author &&
+            senderEmail == next.senderEmail &&
+            !isNudge && !next.isNudge &&
+            !isInk && !next.isInk &&
+            next.timestampMillis - timestampMillis in 0L..(5 * 60 * 1_000L)
+
+@Composable
+internal fun MessageBubble(
+    message: ChatMessage,
+    useOriginalEmoticons: Boolean,
+    showSenderName: Boolean = false,
+    joinsPrevious: Boolean = false,
+    joinsNext: Boolean = false,
+    modifier: Modifier = Modifier,
+    onRetry: () -> Unit = {},
+    textSize: Int = NativeTextStyle.DEFAULT_SIZE,
+    containerInteractionEnabled: Boolean =
+        message.wink == null && !message.isVoiceClip && !message.isInk && message.fileTransfer == null,
+) {
+    var showDeliveryError by rememberSaveable(message.id) { mutableStateOf(false) }
+    var showWinkOptions by rememberSaveable(message.id) { mutableStateOf(false) }
+    var showSoundOptions by rememberSaveable(message.id) { mutableStateOf(false) }
+    val emotionSound = message.emotionSound
+    val deliveryError = message.deliveryError
+    val winkTransferFailed = message.wink != null && !message.isWinkPending && message.winkTransferError != null
+    val containerInteractionModifier = if (containerInteractionEnabled) {
+        val interactionSource = remember { MutableInteractionSource() }
+        val context = LocalContext.current
+        val haptic = LocalHapticFeedback.current
+        val copyText = emotionSound?.displayText ?: message.text
+        val onCopy = remember(context, haptic, copyText) {
+            {
+                copyChatMessage(context, copyText)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        }
+        Modifier
+            .indication(interactionSource, ripple())
+            .copyMessageOnLongPress(
+                label = stringResource(R.string.chat_copy_message),
+                interactionSource = interactionSource,
+                onCopy = onCopy,
+            )
+    } else Modifier
+    val alignment = when (message.author) {
+        MessageAuthor.Me -> Alignment.CenterEnd
+        MessageAuthor.Contact -> Alignment.CenterStart
+        MessageAuthor.System -> Alignment.Center
+    }
+    // MSN Messenger conversation styling: outgoing bubbles carry the solid MSN blue accent and
+    // incoming bubbles carry the pale blue container, both with readable ink colors.
+    val containerColor = when (message.author) {
+        MessageAuthor.Me -> MaterialTheme.colorScheme.primary
+        MessageAuthor.Contact -> MaterialTheme.colorScheme.primaryContainer
+        MessageAuthor.System -> if (message.isNudge) {
+            MaterialTheme.colorScheme.tertiaryContainer
+        } else {
+            MaterialTheme.colorScheme.errorContainer
+        }
+    }
+    val supportingColor = when (message.author) {
+        MessageAuthor.Me -> MaterialTheme.colorScheme.onPrimary
+        MessageAuthor.Contact -> MaterialTheme.colorScheme.onPrimaryContainer
+        MessageAuthor.System -> if (message.isNudge) {
+            MaterialTheme.colorScheme.onTertiaryContainer
+        } else {
+            MaterialTheme.colorScheme.onErrorContainer
+        }
+    }
+    BoxWithConstraints(modifier = modifier.fillMaxWidth(), contentAlignment = alignment) {
+        val containerWidth = maxWidth
+        Surface(
+            modifier = Modifier
+                .widthIn(max = containerWidth * (2f / 3f), min = containerWidth * (1f / 4f)),
+            shape = MaterialTheme.shapes.chatBubble(
+                isOutgoing = when (message.author) {
+                    MessageAuthor.Me -> true
+                    MessageAuthor.Contact -> false
+                    MessageAuthor.System -> null
+                },
+                joinsPrevious = joinsPrevious,
+                joinsNext = joinsNext,
+            ),
+            color = containerColor,
+        ) {
+            Column(
+                modifier = containerInteractionModifier
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+            ) {
+                if (showSenderName && message.author == MessageAuthor.Contact && !joinsPrevious) {
+                    message.senderName?.let { name ->
+                        MessengerPlusText(
+                            text = name, style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                if (message.fileTransfer != null) {
+                    FileTransferMessage(message)
+                } else if (message.wink != null) {
+                    WinkMessage(message, onShowOptions = { showWinkOptions = true }, onRetry = onRetry)
+                } else if (message.isVoiceClip) {
+                    VoiceClipMessage(message)
+                } else if (message.inkDrawing != null) {
+                    HandwritingMessageCanvas(
+                        drawing = message.inkDrawing,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                } else {
+                    MsnEmoticonText(
+                        text = emotionSound?.displayText ?: message.text,
+                        modifier = if (emotionSound != null) Modifier.testTag("emotion_sound_message_${message.id}")
+                            .clickable(onClickLabel = stringResource(R.string.chat_show_emotion_sound_options), role = androidx.compose.ui.semantics.Role.Button) { showSoundOptions = true }
+                            else Modifier,
+                        nativeStyle = if (message.author == MessageAuthor.System) message.nativeStyle
+                            else message.nativeStyle.copy(size = textSize),
+                        useOriginalEmoticons = useOriginalEmoticons,
+                        renderedShortcutRanges = message.renderedEmoticonRanges,
+                        linkify = emotionSound == null,
+                        style = if (message.isNudge) {
+                            MaterialTheme.typography.titleMedium
+                        } else MaterialTheme.typography.bodyLarge,
+                    )
+                }
+                Row(
+                    modifier = Modifier.align(
+                        if (message.author == MessageAuthor.Me) Alignment.End else Alignment.Start,
+                    ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = DateFormat.getTimeInstance(DateFormat.SHORT)
+                            .format(Date(message.timestampMillis)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = supportingColor,
+                    )
+                    if (winkTransferFailed || (message.author == MessageAuthor.Me && deliveryError != null)) {
+                        IconButton(
+                            onClick = {
+                                if (winkTransferFailed) showWinkOptions = true else showDeliveryError = true
+                            },
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.ErrorOutline,
+                                contentDescription = stringResource(
+                                    if (winkTransferFailed) R.string.wink_download_failed else R.string.chat_message_failed,
+                                ),
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    } else if (message.author == MessageAuthor.Me && message.isSending) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = stringResource(R.string.chat_message_sending),
+                            tint = supportingColor,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+    if (showSoundOptions && emotionSound != null) EmotionSoundMessageSheet(message) { showSoundOptions = false }
+    if (showWinkOptions && message.wink != null) {
+        WinkMessageSheet(message, onDismiss = { showWinkOptions = false }, onRetry = onRetry)
+    }
+    if (showDeliveryError && deliveryError != null) {
+        AlertDialog(
+            onDismissRequest = { showDeliveryError = false },
+            title = { Text(stringResource(R.string.chat_message_failed)) },
+            text = { Text(deliveryError) },
+            confirmButton = {
+                Button(onClick = {
+                    showDeliveryError = false
+                    onRetry()
+                }, shapes = ButtonDefaults.shapes()) {
+                    Text(stringResource(R.string.chat_message_retry))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeliveryError = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
+}

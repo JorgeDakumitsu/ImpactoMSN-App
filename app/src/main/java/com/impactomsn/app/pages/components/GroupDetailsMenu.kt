@@ -1,0 +1,145 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
+package com.impactomsn.app.pages.components
+
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GroupOff
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material3.DropdownMenuGroup
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuPopup
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import com.impactomsn.app.data.Contact
+import com.impactomsn.app.R
+import com.impactomsn.app.data.canInviteGroupMembers
+import com.impactomsn.app.data.canLeaveGroup
+
+@Composable
+internal fun GroupDetailsMenu(
+    group: Contact?,
+    ownEmail: String,
+    onInviteMembers: () -> Unit,
+    onLeaveGroup: () -> Unit,
+    onOpenNotifications: (() -> Unit)? = null,
+    onChangeBlocking: (() -> Unit)? = null,
+) {
+    val canInvite = group?.canInviteGroupMembers(ownEmail) == true
+    val canLeave = group?.canLeaveGroup(ownEmail) == true
+    val canCustomize = group != null && onOpenNotifications != null
+    val canBlock = group?.isGroup == true && onChangeBlocking != null
+    val groupCount = (if (canInvite) 1 else 0) + (if (canLeave) 1 else 0) +
+        (if (canCustomize) 1 else 0) + (if (canBlock) 1 else 0)
+    if (groupCount == 0) return
+
+    var expanded by remember(group?.id, ownEmail) { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+        ) {
+            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.group_options))
+        }
+        DropdownMenuPopup(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            if (canInvite) {
+                DropdownMenuGroup(
+                    shapes = MenuDefaults.groupShape(0, groupCount),
+                    modifier = Modifier.testTag("group-invite-menu-group"),
+                    interactionSource = interactionSource,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.group_invite_contacts), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        leadingIcon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
+                        shape = if (canCustomize || canBlock || canLeave) MenuDefaults.leadingItemShape else MenuDefaults.standaloneItemShape,
+                        modifier = Modifier.testTag("group-invite"),
+                        onClick = { expanded = false; onInviteMembers() },
+                    )
+                }
+            }
+            if (canInvite && (canCustomize || canBlock || canLeave)) Spacer(Modifier.height(MenuDefaults.GroupSpacing))
+            if (canCustomize) {
+                DropdownMenuGroup(
+                    shapes = MenuDefaults.groupShape(if (canInvite) 1 else 0, groupCount),
+                    modifier = Modifier.testTag("group-notifications-menu-group"),
+                    interactionSource = interactionSource,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.group_custom_notifications)) },
+                        leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
+                        shape = when {
+                            canInvite && (canBlock || canLeave) -> MenuDefaults.middleItemShape
+                            canInvite -> MenuDefaults.trailingItemShape
+                            canBlock || canLeave -> MenuDefaults.leadingItemShape
+                            else -> MenuDefaults.standaloneItemShape
+                        },
+                        modifier = Modifier.testTag("group_notification_settings"),
+                        onClick = { expanded = false; onOpenNotifications.invoke() },
+                    )
+                }
+            }
+            if (canCustomize && (canBlock || canLeave)) Spacer(Modifier.height(MenuDefaults.GroupSpacing))
+            if (canBlock) {
+                DropdownMenuGroup(
+                    shapes = MenuDefaults.groupShape((if (canInvite) 1 else 0) + (if (canCustomize) 1 else 0), groupCount),
+                    modifier = Modifier.testTag("group-block-menu-group"),
+                    interactionSource = interactionSource,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(if (group.isBlocked) R.string.group_unblock_action else R.string.group_block_action)) },
+                        leadingIcon = { Icon(if (group.isBlocked) Icons.Default.CheckCircle else Icons.Default.Block, contentDescription = null) },
+                        shape = when {
+                            (canInvite || canCustomize) && canLeave -> MenuDefaults.middleItemShape
+                            canInvite || canCustomize -> MenuDefaults.trailingItemShape
+                            canLeave -> MenuDefaults.leadingItemShape
+                            else -> MenuDefaults.standaloneItemShape
+                        },
+                        modifier = Modifier.testTag("group-block"),
+                        onClick = { expanded = false; onChangeBlocking.invoke() },
+                    )
+                }
+            }
+            if (canBlock && canLeave) Spacer(Modifier.height(MenuDefaults.GroupSpacing))
+            if (canLeave) {
+                DropdownMenuGroup(
+                    shapes = MenuDefaults.groupShape(groupCount - 1, groupCount),
+                    modifier = Modifier.testTag("group-leave-menu-group"),
+                    interactionSource = interactionSource,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.group_leave_submit), color = MaterialTheme.colorScheme.error) },
+                        leadingIcon = {
+                            Icon(Icons.Default.GroupOff, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error)
+                        },
+                        shape = if (canInvite || canCustomize || canBlock) MenuDefaults.trailingItemShape else MenuDefaults.standaloneItemShape,
+                        modifier = Modifier.testTag("group-leave"),
+                        onClick = { expanded = false; onLeaveGroup() },
+                    )
+                }
+            }
+        }
+    }
+}

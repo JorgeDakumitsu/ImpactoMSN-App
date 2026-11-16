@@ -1,0 +1,107 @@
+diff --git a/decoder.c b/decoder.c
+index 69e4276..2f4c360 100644
+--- a/decoder.c
++++ b/decoder.c
+@@ -1,3 +1,5 @@
++/* Modified for Msngr on 2026-10-28: allocation and envelope bounds checks.
++ * These changes are licensed under LGPL-2.1-or-later. */
+ /*
+  * Siren Encoder/Decoder library
+  *
+@@ -26,6 +28,7 @@ SirenDecoder
+ Siren7_NewDecoder (int sample_rate)
+ {
+   SirenDecoder decoder = (SirenDecoder) malloc (sizeof (struct stSirenDecoder));
++  if (decoder == NULL) return NULL;
+   decoder->sample_rate = sample_rate;
+ 
+   decoder->WavHeader.riff.RiffId = ME_TO_LE32 (RIFF_ID);
+@@ -144,6 +147,7 @@ Siren7_DecodeFrame (SirenDecoder decoder, unsigned char *DataIn,
+   envelope_bits =
+       decode_envelope (number_of_regions, decoder_standard_deviation,
+       absolute_region_power_index, esf_adjustment);
++  if (envelope_bits < 0) return 7;
+ 
+   number_of_available_bits -= envelope_bits;
+ 
+diff --git a/encoder.c b/encoder.c
+index b087bbc..b002f6b 100644
+--- a/encoder.c
++++ b/encoder.c
+@@ -1,3 +1,5 @@
++/* Modified for Msngr on 2026-10-28: allocation checks.
++ * These changes are licensed under LGPL-2.1-or-later. */
+ /*
+  * Siren Encoder/Decoder library
+  *
+@@ -28,6 +30,7 @@ SirenEncoder
+ Siren7_NewEncoder (int sample_rate)
+ {
+   SirenEncoder encoder = (SirenEncoder) malloc (sizeof (struct stSirenEncoder));
++  if (encoder == NULL) return NULL;
+   encoder->sample_rate = sample_rate;
+ 
+   encoder->WavHeader.riff.RiffId = ME_TO_LE32 (RIFF_ID);
+diff --git a/huffman.c b/huffman.c
+index e97da4a..8e5aa2f 100644
+--- a/huffman.c
++++ b/huffman.c
+@@ -1,3 +1,5 @@
++/* Modified for Msngr on 2026-10-28: bitstream, envelope, and noise-table bounds checks.
++ * These changes are licensed under LGPL-2.1-or-later. */
+ /*
+  * Siren Encoder/Decoder library
+  *
+@@ -27,6 +29,7 @@
+ static short current_word = 0;
+ static int bit_idx = 0;
+ static int *bitstream_ptr = NULL;
++static int words_remaining = 0;
+ 
+ int
+ next_bit (void)
+@@ -35,7 +38,9 @@ next_bit (void)
+     return -1;
+ 
+   if (bit_idx == 0) {
++    if (words_remaining <= 0) return 0;
+     current_word = *bitstream_ptr++;
++    words_remaining--;
+     bit_idx = 16;
+   }
+ 
+@@ -48,6 +53,7 @@ set_bitstream (int *stream)
+   bitstream_ptr = stream;
+   current_word = *bitstream_ptr;
+   bit_idx = 0;
++  words_remaining = 20;
+ }
+ 
+ 
+@@ -153,6 +159,8 @@ decode_envelope (int number_of_regions, float *decoder_standard_deviation,
+ 
+     absolute_region_power_index[i] =
+         absolute_region_power_index[i - 1] - index - 12;
++    if (absolute_region_power_index[i] < -24 || absolute_region_power_index[i] > 39)
++      return -1;
+     decoder_standard_deviation[i] =
+         standard_deviation[absolute_region_power_index[i] + 24];
+   }
+@@ -382,7 +390,7 @@ decode_vector (SirenDecoder decoder, int number_of_regions,
+         coefs_ptr++;
+       }
+ 
+-      noise = decoder_standard_deviation[region] * noise_category5[i];
++      noise = decoder_standard_deviation[region] * noise_category5[i < 20 ? i : 19];
+     } else if (category == 6) {
+       i = 0;
+       for (j = 0; j < region_size; j++) {
+@@ -390,7 +398,7 @@ decode_vector (SirenDecoder decoder, int number_of_regions,
+           i++;
+       }
+ 
+-      noise = decoder_standard_deviation[region] * noise_category6[i];
++      noise = decoder_standard_deviation[region] * noise_category6[i < 20 ? i : 19];
+     } else if (category == 7) {
+       noise = decoder_standard_deviation[region] * noise_category7;
+     } else {

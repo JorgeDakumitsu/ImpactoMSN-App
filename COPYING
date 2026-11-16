@@ -1,0 +1,37 @@
+ImpactoMSN
+==========
+
+1. ImpactoMSN Client MSN Messenger Mobile - attribution license
+---------------------------------------------------------------
+
+Copyright (C) 2025-2026 Jorge Dakumitsu
+
+This section covers the changes and additions made by Jorge Dakumitsu on top
+of the original code (server selection, language
+selector, Windows 7 Aero style, Beta updater, translations, Call System for ImpactoMSN, etc.).
+
+Permission to use, copy, modify, and distribute these modifications, with or
+without fee, is granted, provided that:
+
+  a) the copyright notices of Jorge Dakumitsu and this 
+     COPYING file are kept in all copies and derivative works, and
+  b) credit to the of the code (Aral Özkaya as original author and
+     Jorge Dakumitsu as author of ImpactoMSN) is visible in the source code
+     and in the About screen or documentation of any derivative app.
+
+You may edit the code freely under these conditions, and you may publish the
+edited code in forks of this project (for example, forks of
+https://github.com/JorgeDakumitsu/ImpactoMSN-App).
+
+THESE MODIFICATIONS ARE PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL
+WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+
+2. Third-party components
+-------------------------
+
+Third-party code (libsiren, Ruffle, libraries listed in the About screen)
+keeps its own license. See app/src/main/assets/licenses/.

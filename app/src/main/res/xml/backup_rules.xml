@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="sharedpref" path="impactomsn_updates.xml" />
+    <exclude domain="sharedpref" path="impactomsn_session_secure.xml" />
+    <exclude domain="sharedpref" path="impactomsn_session_secure_keyset.xml" />
+</full-backup-content>
