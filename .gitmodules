@@ -1,10 +1,8 @@
 [submodule "third_party/libsiren"]
 	path = third_party/libsiren
-	url = https://github.com/kakaroto/libsiren.git
+	url = https://github.com
 	branch = master
 	shallow = true
 [submodule "third_party/ruffle"]
 	path = third_party/ruffle
-	url = https://github.com/ruffle-rs/ruffle.git
-	shallow = true
-	update = none
+	url = https://github.com
