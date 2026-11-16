@@ -4,7 +4,7 @@
   "libsirenCommit": "c7724c03d4a6daf4d6dff9e917c14ce5071dce66",
   "libsirenPatchSha256": "6fef2668cc0d8f7f3ad56d8c7f6c6c23f0d7c8dfe97f7ce27d7bed9475c4632c",
   "inputs": {
-    "COPYING": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "COPYING": "b557975dd15525bf5c174af45602275c70d5a120a07d7ae422d863a0e6ed81c3",
     "app/src/main/cpp/CMakeLists.txt": "081ed12f9c925b4fb0e9ada4529968a4a93f5737240c833fc8badb3df61d14e3",
     "app/src/main/cpp/siren_jni.c": "2acb1115d50d4e0d7595064af525e50c4e7195360a69bd99f2edd9e1d0ab33f5",
     "app/src/main/java/com/impactomsn/app/UnicodeEmoji.kt": "e59244b40d02cd7441c8f161e108c49b7a19a7bc77e1b2bb6e95afa675fb1050"
