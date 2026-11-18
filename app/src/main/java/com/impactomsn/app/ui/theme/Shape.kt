@@ -10,6 +10,15 @@ import androidx.compose.ui.unit.dp
 /** The stock Material 3 shape scale, shared by every ImpactoMSN surface and component. */
 internal val ImpactoMsnShapes = Shapes()
 
+/** Large, soft corners used by the Android Liquid Glass contact/profile layout. */
+internal val LiquidGlassShapes = Shapes(
+    extraSmall = RoundedCornerShape(12.dp),
+    small = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(22.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(34.dp),
+)
+
 internal val ProfileCardCornerRadius = 28.dp
 internal val ProfileCardPressedCornerRadius = 16.dp
 internal val OwnDisplayPictureCornerRadius = 28.dp

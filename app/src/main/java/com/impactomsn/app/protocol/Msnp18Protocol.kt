@@ -245,6 +245,12 @@ object Msnp18Protocol {
         body = message.toByteArray(StandardCharsets.UTF_8),
     )
 
+    fun customEmoticonPayload(shortcut: String, metadata: MsnDisplayPicture): ByteArray =
+        mimePayload(
+            contentType = "text/x-mms-emoticon",
+            body = "$shortcut\r\n${metadata.toXml()}\r\n".toByteArray(StandardCharsets.UTF_8),
+        )
+
     fun p2pPayload(destination: String, packet: ByteArray, source: String? = null): ByteArray = mimePayload(
         contentType = P2P_CONTENT_TYPE,
         extraHeaders = buildMap {

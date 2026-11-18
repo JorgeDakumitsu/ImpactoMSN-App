@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -19,10 +20,11 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -39,6 +41,8 @@ import com.impactomsn.app.ScenePresentation
 import com.impactomsn.app.UiStyle
 import com.impactomsn.app.messengerScene
 import com.impactomsn.app.pages.components.KeyboardSheetScaffold
+
+internal val LocalLiquidGlassEnabled = staticCompositionLocalOf { false }
 
 internal val DarkColorScheme = darkColorScheme(
     primary = DarkPrimary,
@@ -157,6 +161,7 @@ fun ImpactoMsnTheme(
     val isDark = false // dark mode was removed
     val aero = appearance.uiStyle == UiStyle.Aero
     val liquidGlass = appearance.uiStyle == UiStyle.LiquidGlass
+    val darkVisual = isDark
     val colorScheme = remember(context, appearance, isDark) {
         impactomsnColorScheme(context, appearance, isDark).let {
             when {
@@ -172,13 +177,14 @@ fun ImpactoMsnTheme(
         SideEffect {
             val window = (view.context as Activity).window
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !isDark
-                isAppearanceLightNavigationBars = !isDark
+                isAppearanceLightStatusBars = !darkVisual
+                isAppearanceLightNavigationBars = !darkVisual
             }
         }
     }
 
     CompositionLocalProvider(
+        LocalLiquidGlassEnabled provides liquidGlass,
         LocalMessengerScene provides if (appearance.colorMode == ColorMode.Scenes) messengerScene(appearance.sceneId) else null,
         LocalScenePresentation provides ScenePresentation(
             showInConversations = appearance.showSceneInConversations,
@@ -191,7 +197,7 @@ fun ImpactoMsnTheme(
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
             motionScheme = MotionScheme.expressive(),
-            shapes = ImpactoMsnShapes,
+             shapes = if (liquidGlass) LiquidGlassShapes else ImpactoMsnShapes,
         ) {
             AdaptiveWindowProvider {
                 if (fillWindowSurface && aero) {
@@ -199,7 +205,7 @@ fun ImpactoMsnTheme(
                         KeyboardSheetScaffold(content = content)
                     }
                 } else if (fillWindowSurface && liquidGlass) {
-                    Box(Modifier.fillMaxSize().background(liquidGlassBackdrop(colorScheme))) {
+                    LiquidGlassBackdrop(colorScheme) {
                         KeyboardSheetScaffold(content = content)
                     }
                 } else if (fillWindowSurface) {
@@ -275,33 +281,38 @@ internal fun aeroColorScheme(base: ColorScheme): ColorScheme = base.copy(
  * on iOS/iPadOS 15 and older macOS versions without Apple's newer native API.
  */
 internal fun liquidGlassBackdrop(base: ColorScheme): Brush = Brush.verticalGradient(
-    0f to base.primary.copy(alpha = 0.18f),
-    0.42f to Color.White.copy(alpha = 0.92f),
+    0f to base.primary.copy(alpha = 0.22f),
+    0.38f to base.surfaceContainerLowest.copy(alpha = 0.96f),
     1f to base.secondary.copy(alpha = 0.16f),
 )
 
+/**
+ * Android liquid-glass backdrop. The light blobs are deliberately blurred before
+ * the translucent content is drawn, matching the reference project's layered
+ * backdrop approach while remaining Compose-native and API 24 compatible.
+ */
+@Composable
+private fun LiquidGlassBackdrop(
+    colorScheme: ColorScheme,
+    content: @Composable () -> Unit,
+) {
+    Box(Modifier.fillMaxSize().background(liquidGlassBackdrop(colorScheme))) {
+        content()
+    }
+}
+
 internal fun liquidGlassColorScheme(base: ColorScheme): ColorScheme = base.copy(
-    // The glass treatment changes translucency and surfaces, while the
-    // selected color mode supplies the accent/hue.
-    primary = base.primary,
-    onPrimary = base.onPrimary,
+    // Keep the selected Default/Dynamic/Scenes/custom seed as the glass tint.
     primaryContainer = base.primaryContainer.copy(alpha = 0.72f),
-    onPrimaryContainer = base.onPrimaryContainer,
-    secondary = base.secondary,
-    onSecondary = base.onSecondary,
-    secondaryContainer = base.secondaryContainer.copy(alpha = 0.60f),
-    onSecondaryContainer = base.onSecondaryContainer,
-    background = Color(0xFFEAF1FC),
-    onBackground = Color(0xFF18243A),
-    surface = Color(0x99FFFFFF),
-    onSurface = Color(0xFF18243A),
-    surfaceVariant = Color(0x80FFFFFF),
-    onSurfaceVariant = Color(0xFF4A5B76),
-    outline = Color(0x806D86AD),
-    outlineVariant = Color(0x66FFFFFF),
-    surfaceContainerLowest = Color(0x66FFFFFF),
-    surfaceContainerLow = Color(0x80FFFFFF),
-    surfaceContainer = Color(0x99FFFFFF),
-    surfaceContainerHigh = Color(0xB3FFFFFF),
-    surfaceContainerHighest = Color(0xCCFFFFFF),
+    secondaryContainer = base.secondaryContainer.copy(alpha = 0.62f),
+    background = base.primary.copy(alpha = 0.08f).compositeOver(Color.White),
+    surface = Color.White.copy(alpha = 0.72f),
+    surfaceVariant = base.primary.copy(alpha = 0.10f).compositeOver(Color.White),
+    surfaceContainerLowest = Color.White.copy(alpha = 0.56f),
+    surfaceContainerLow = Color.White.copy(alpha = 0.68f),
+    surfaceContainer = base.primary.copy(alpha = 0.08f).compositeOver(Color.White),
+    surfaceContainerHigh = Color.White.copy(alpha = 0.82f),
+    surfaceContainerHighest = Color.White.copy(alpha = 0.92f),
+    outline = base.primary.copy(alpha = 0.38f),
+    outlineVariant = Color.White.copy(alpha = 0.78f),
 )

@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import android.util.Log
 
 /** Minimal MSNSLP/P2Pv1 user-tile transport used by MSNP switchboards. */
 internal class MsnpP2pSession(
@@ -14,6 +15,7 @@ internal class MsnpP2pSession(
     private val localPicture: () -> LocalDisplayPicture?,
     private val onDisplayPicture: (ByteArray) -> Unit,
     private val onCustomEmoticon: (MsnDisplayPicture, ByteArray) -> Unit = { _, _ -> },
+    private val localCustomEmoticon: (MsnDisplayPicture) -> LocalDisplayPicture? = { null },
     localEndpointId: String = "",
     remoteEndpointId: String? = null,
     private val localVoiceClip: (String) -> LocalDisplayPicture? = { null },
@@ -39,6 +41,7 @@ internal class MsnpP2pSession(
             localPicture = localPicture,
             onDisplayPicture = onDisplayPicture,
             onCustomEmoticon = onCustomEmoticon,
+            localCustomEmoticon = localCustomEmoticon,
             localVoiceClip = localVoiceClip,
             onVoiceClip = onVoiceClip,
             localWink = localWink, onWink = onWink,
@@ -114,6 +117,11 @@ internal class MsnpP2pSession(
         val callId = MsnpP2pUtil.randomGuid()
         val branch = MsnpP2pUtil.randomGuid()
         pendingCalls[sessionId] = PendingDisplayPicture(callId, picture, now)
+        Log.d(
+            "CustomEmoticon",
+            "Solicitando objeto tipo=${picture.objectType} sha1=${picture.sha1d} " +
+                "session=$sessionId destino=$remoteEmail modo=P2Pv1",
+        )
         val content = MsnpP2pUtil.displayPictureRequestContent(sessionId, picture)
         sendMessage(
             sessionId = 0,
@@ -147,6 +155,10 @@ internal class MsnpP2pSession(
             .filter { now - it.value.createdAtNanos >= REQUEST_TIMEOUT_NANOS }
             .forEach { incoming.remove(it.key, it.value) }
         val packet = P2pPacket.parse(packetBytes) ?: return
+        Log.d(
+            "MsnpP2p",
+            "Paquete recibido session=${packet.header.sessionId} flags=0x${packet.header.flags.toString(16)} bytes=${packet.body.size}",
+        )
         if (packet.header.flags == P2P_ACK) {
             if (fileApplicationLazy.isInitialized()) files.acknowledged(packet.header.acknowledgementId.toLong() and 0xffff_ffffL)
             return
@@ -189,7 +201,9 @@ internal class MsnpP2pSession(
                 val pending = pendingCalls.remove(message.header.sessionId)
                 if (pending == null && incomingCustomObjects.containsKey(message.header.sessionId)) {
                     incomingCustomObjects.remove(message.header.sessionId)?.let { metadata ->
+                        Log.d("CustomEmoticon", "Datos tipo 2 recibidos bytes=${message.body.size}")
                         if (metadata.matches(message.body)) onCustomEmoticon(metadata, message.body)
+                        else Log.w("CustomEmoticon", "SHA-1 no coincide")
                     }
                 } else if (pending?.picture?.objectType == 2) {
                     if (pending.picture.matches(message.body)) onCustomEmoticon(pending.picture, message.body)
@@ -210,6 +224,11 @@ internal class MsnpP2pSession(
 
     private suspend fun handleSlp(bytes: ByteArray) {
         val message = SlpMessage.parse(bytes) ?: return
+        Log.d(
+            "MsnpP2p",
+            "SLP recibido first=${message.firstLine} contentType=${message.contentType} " +
+                "callId=${message.callId}",
+        )
         if ((photoApplicationLazy.isInitialized() || message.body.field("EUF-GUID")?.trim('{', '}')
                 ?.equals(MsnpPhotoSession.GUID, true) == true) && photos.handle(message)) return
         if ((gameApplicationLazy.isInitialized() || message.body.field("EUF-GUID")?.trim('{', '}')
@@ -248,6 +267,22 @@ internal class MsnpP2pSession(
             }
         }
         if (custom != null) {
+            Log.d("CustomEmoticon", "INVITE tipo 2 recibido session=$sessionId")
+            val local = localCustomEmoticon(custom)
+            if (local != null) {
+                sendMessage(0, P2P_NO_FLAG, 0, sipMessage(
+                    "MSNSLP/1.0 200 OK", remoteEmail, localEmail, message.branch, message.callId, 1,
+                    MsnpP2pUtil.SESSION_REQUEST_CONTENT_TYPE, "SessionID: $sessionId\r\n\r\n",
+                ))
+                sendMessage(sessionId, P2P_NO_FLAG, 0, ByteArray(4))
+                sendMessage(
+                    sessionId,
+                    P2P_MSN_OBJECT_DATA,
+                    MsnpP2pUtil.objectAppId(2),
+                    local.bytes,
+                )
+                return
+            }
             incomingCustomObjects[sessionId] = custom
             sendMessage(0, P2P_NO_FLAG, 0, sipMessage(
                 "MSNSLP/1.0 200 OK", remoteEmail, localEmail, message.branch, message.callId, 1,

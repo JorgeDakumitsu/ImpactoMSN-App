@@ -77,6 +77,12 @@ class ImpactoMsnApplication : Application() {
                         onCustomEmoticon = { metadata, bytes ->
                             CustomEmoticonCatalog.add(this, metadata, bytes)
                         },
+                        localCustomEmoticon = { metadata ->
+                            CustomEmoticonCatalog.localObject(this, metadata)
+                        },
+                        customEmoticonAnnouncements = {
+                            CustomEmoticonCatalog.announcements(this, it)
+                        },
                         fileTransferDirectory = File(noBackupFilesDir, "file_transfers"),
                         endpointName = { deviceEndpointName(this) },
                         endpointId = { deviceEndpointId(this) },

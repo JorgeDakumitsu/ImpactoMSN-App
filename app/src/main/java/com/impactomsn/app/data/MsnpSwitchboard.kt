@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import android.util.Log
 
 internal data class SwitchboardInvitation(
     val host: String,
@@ -59,6 +60,7 @@ internal class MsnpSwitchboardSession(
     private val scope: CoroutineScope,
     private val eventSink: (SwitchboardEvent) -> Unit,
     private val localPicture: () -> LocalDisplayPicture? = { null },
+    private val localCustomEmoticon: (MsnDisplayPicture) -> LocalDisplayPicture? = { null },
     private val remoteEndpointId: String? = null,
     private val handshakeTimeoutMillis: Long = DEFAULT_HANDSHAKE_TIMEOUT_MILLIS,
     sharedPictureSession: MsnpP2pSession? = null,
@@ -98,7 +100,8 @@ internal class MsnpSwitchboardSession(
             sendPacket = { packet ->
                 queueP2pPacket(remoteEndpointId?.let { "${this.contactEmail};{$it}" } ?: this.contactEmail, packet)
             },
-            localPicture = localPicture,
+                 localPicture = localPicture,
+                 localCustomEmoticon = localCustomEmoticon,
             fileDirectory = fileDirectory,
             onFileTransfer = { eventSink(SwitchboardEvent.FileChanged(this.contactEmail, it)) },
             onPhotoShare = { eventSink(SwitchboardEvent.PhotosChanged(this.contactEmail, it)) },
@@ -111,7 +114,7 @@ internal class MsnpSwitchboardSession(
             onCustomEmoticon = { metadata, bytes ->
                 eventSink(SwitchboardEvent.CustomEmoticon(this.contactEmail, metadata, bytes))
             },
-            localEndpointId = machineGuid,
+             localEndpointId = machineGuid,
             remoteEndpointId = remoteEndpointId,
             localVoiceClip = localVoiceClip,
             localWink = localWink,
@@ -169,6 +172,13 @@ internal class MsnpSwitchboardSession(
             else encoded.trimMessengerPlusWhitespace().text
         if (normalized.isEmpty()) return
         sendPayload(Msnp18Protocol.textPayload(normalized, style), acknowledgement = "A")
+    }
+
+    suspend fun sendCustomEmoticon(metadata: MsnDisplayPicture, shortcut: String) {
+        sendPayload(
+            Msnp18Protocol.customEmoticonPayload(shortcut, metadata),
+            acknowledgement = "A",
+        )
     }
 
     suspend fun sendTyping() {
@@ -388,9 +398,12 @@ internal class MsnpSwitchboardSession(
                     ?.requestVoiceClip(message.metadata)
             }
             is SwitchboardMimeMessage.CustomEmoticonOffer -> {
-                if (!message.metadata.creator.equals(sender, true)) return
-                if (!closed.get()) p2pPeer(sender, normalizeEndpointId(rawSender.substringAfter(';', "")))
-                    ?.requestDisplayPicture(message.metadata)
+                message.offers.forEach { (metadata, shortcut) ->
+                    Log.d("CustomEmoticon", "Anuncio recibido shortcut=$shortcut")
+                    if (!metadata.creator.equals(sender, true)) return@forEach
+                    if (!closed.get()) p2pPeer(sender, normalizeEndpointId(rawSender.substringAfter(';', "")))
+                        ?.requestDisplayPicture(metadata)
+                }
             }
             is SwitchboardMimeMessage.WinkOffer -> {
                 if (!message.metadata.creator.equals(sender, true) || !acceptWink()) return
@@ -486,6 +499,11 @@ internal class MsnpSwitchboardSession(
     }
 
     private suspend fun queueP2pPacket(destination: String, bytes: ByteArray) {
+        Log.d(
+            "MsnpP2p",
+            "Enviando paquete destino=$destination bytes=${bytes.size} " +
+                "session=${readP2pSessionId(bytes)} flags=${readP2pFlags(bytes)}",
+        )
         val v2 = P2pV2Packet.parse(bytes)
         val isFileData = if (v2 != null) v2.sessionId != 0L && v2.tfCombination and 6 == 6
             else bytes.size >= 48 && java.nio.ByteBuffer.wrap(bytes, 28, 4)
@@ -496,6 +514,14 @@ internal class MsnpSwitchboardSession(
         outgoingP2pPackets.send(OutgoingPicturePacket(destination, bytes, delivered))
         delivered?.await()
     }
+
+    private fun readP2pSessionId(bytes: ByteArray): Long? =
+        if (bytes.size >= 4) java.nio.ByteBuffer.wrap(bytes, 0, 4)
+            .order(java.nio.ByteOrder.LITTLE_ENDIAN).int.toLong() else null
+
+    private fun readP2pFlags(bytes: ByteArray): String =
+        if (bytes.size >= 32) "0x${java.nio.ByteBuffer.wrap(bytes, 28, 4)
+            .order(java.nio.ByteOrder.LITTLE_ENDIAN).int.toString(16)}" else "n/a"
 
     private fun switchboardIdentity(): String =
         "$signedInEmail;{${machineGuid.trim('{', '}')}}"
@@ -517,7 +543,9 @@ internal sealed interface SwitchboardMimeMessage {
     data class Ink(val drawing: InkDrawing) : SwitchboardMimeMessage
     data class WinkOffer(val metadata: MsnDisplayPicture) : SwitchboardMimeMessage
     data class VoiceClipOffer(val metadata: MsnDisplayPicture) : SwitchboardMimeMessage
-    data class CustomEmoticonOffer(val metadata: MsnDisplayPicture, val shortcut: String?) : SwitchboardMimeMessage
+    data class CustomEmoticonOffer(
+        val offers: List<Pair<MsnDisplayPicture, String?>>,
+    ) : SwitchboardMimeMessage
     data class P2p(val destination: String?, val bytes: ByteArray, val source: String? = null) : SwitchboardMimeMessage
     data object Typing : SwitchboardMimeMessage
     data object Nudge : SwitchboardMimeMessage
@@ -540,8 +568,16 @@ internal fun parseSwitchboardMime(payload: ByteArray): SwitchboardMimeMessage {
         ?.trim()
         ?.lowercase()
         ?: return SwitchboardMimeMessage.Unsupported
+    Log.d("MsnpSwitchboard", "MIME recibido type=$contentType bytes=${payload.size}")
     val bodyStart = delimiter + MIME_DELIMITER.size
     val body = payload.copyOfRange(bodyStart, payload.size)
+    if (contentType == "text/x-mms-emoticon") {
+        Log.d(
+            "CustomEmoticon",
+            "Anuncio bruto headers=${headerText.replace('\r', ' ').replace('\n', '|')} " +
+                "body=${String(body, StandardCharsets.UTF_8).replace('\r', ' ').replace('\n', '|')}",
+        )
+    }
 
     return when (contentType) {
         "text/plain" -> SwitchboardMimeMessage.Text(String(body, StandardCharsets.UTF_8),
@@ -565,24 +601,24 @@ internal fun parseSwitchboardMime(payload: ByteArray): SwitchboardMimeMessage {
             }
         }
         "text/x-mms-emoticon" -> {
-            val candidates = listOfNotNull(
-                String(body, StandardCharsets.UTF_8),
-                headers["content-location"],
-                headers["content-disposition"],
-                headers["x-mms-object"],
+            val bodyText = String(body, StandardCharsets.UTF_8).trimEnd('\u0000', '\r', '\n')
+            val pairPattern = Regex(
+                """(?is)(\[\s*[^\]\r\n]{1,64}\s*])\s*(<msnobj\b[^>]*/>)""",
             )
-            candidates.firstNotNullOfOrNull { MsnDisplayPicture.parseObject(it, 2) }
-                ?.let { metadata ->
-                    val shortcut = headers["content-location"]
-                    SwitchboardMimeMessage.CustomEmoticonOffer(
-                        metadata.copy(
-                            extraAttributes = metadata.extraAttributes +
-                                listOfNotNull(shortcut?.let { "Shortcut" to it }).toMap(),
-                        ),
-                        shortcut,
-                    )
+            val offers = pairPattern.findAll(bodyText).mapNotNull { match ->
+                val shortcut = match.groupValues[1].trim()
+                MsnDisplayPicture.parseObject(match.groupValues[2], 2)?.let { metadata ->
+                    Log.d("CustomEmoticon", "MIME tipo 2 reconocido shortcut=$shortcut")
+                    metadata.copy(
+                        extraAttributes = metadata.extraAttributes + ("Shortcut" to shortcut),
+                    ) to shortcut
                 }
-                ?: SwitchboardMimeMessage.Unsupported
+            }.toList()
+            if (offers.isNotEmpty()) {
+                SwitchboardMimeMessage.CustomEmoticonOffer(offers)
+            } else {
+                SwitchboardMimeMessage.Unsupported
+            }
         }
         Msnp18Protocol.P2P_CONTENT_TYPE -> SwitchboardMimeMessage.P2p(
             destination = headers["p2p-dest"],

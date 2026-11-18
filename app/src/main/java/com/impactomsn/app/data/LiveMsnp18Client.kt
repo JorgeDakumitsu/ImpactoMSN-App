@@ -151,6 +151,8 @@ internal class LiveMsnp18Client(
     private val fetchAddressBookGroupMembers: suspend (String, String, String) -> List<GroupMember> = MsnpAddressBookService::fetchGroupMembers,
     private val nudgeLimiter: NudgeRateLimiter = NudgeRateLimiter(),
     private val onCustomEmoticon: (MsnDisplayPicture, ByteArray) -> Unit = { _, _ -> },
+    private val localCustomEmoticon: (MsnDisplayPicture) -> LocalDisplayPicture? = { null },
+    private val customEmoticonAnnouncements: (String) -> List<Pair<String, MsnDisplayPicture>> = { emptyList() },
 ) : MsnpClient {
     private val mutableContacts = MutableStateFlow<List<Contact>>(emptyList())
     private val mutableContactRequests = MutableStateFlow<List<ContactRequest>>(emptyList())
@@ -1131,7 +1133,14 @@ internal class LiveMsnp18Client(
                     sendOfflineMessage(email, message)
                     null
                 }
-                board?.sendText(message.text, message.nativeStyle)
+                board?.let {
+                    customEmoticonAnnouncements(signedInEmail).filter { (shortcut, _) ->
+                        message.text.contains(shortcut, ignoreCase = true)
+                    }.forEach { (shortcut, metadata) ->
+                        it.sendCustomEmoticon(metadata, shortcut)
+                    }
+                    it.sendText(message.text, message.nativeStyle)
+                }
             }
             Unit
         }
@@ -2762,7 +2771,8 @@ internal class LiveMsnp18Client(
                 transport = switchboardTransportFactory(),
                 scope = scope,
                 eventSink = { event -> handleSwitchboardEvent(session, event) },
-                localPicture = ::localDisplayPictureSnapshot,
+                 localPicture = ::localDisplayPictureSnapshot,
+                 localCustomEmoticon = localCustomEmoticon,
                 fileDirectory = fileTransferDirectory?.let { { transferArea() } },
                 sharedP2pPeers = applicationP2pPeers,
                 localPhoto = ::localPhotoObject,
@@ -2894,6 +2904,7 @@ internal class LiveMsnp18Client(
             scope = scope,
             eventSink = { event -> handleSwitchboardEvent(session, event) },
             localPicture = ::localDisplayPictureSnapshot,
+            localCustomEmoticon = localCustomEmoticon,
             fileDirectory = fileTransferDirectory?.let { { transferArea() } },
             sharedP2pPeers = applicationP2pPeers,
             localPhoto = ::localPhotoObject, publishPhoto = ::publishPhotoObject,

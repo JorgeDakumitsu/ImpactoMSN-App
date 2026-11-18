@@ -1497,9 +1497,15 @@ internal class EmoticonSheetState {
         else open(controller)
     }
 
-    fun insert(emoticon: MsnEmoticonShortcut, onFallbackInsert: (Char) -> Unit = {}) {
-        val token = emoticon.menuToken
-        if (activeController?.insert(token.toString()) != true) {
+    fun insert(emoticon: MsnEmoticonShortcut, onFallbackInsert: (String) -> Unit = {}) {
+        // Built-in emoticons use an internal one-character menu token. Custom
+        // emoticons have no menu token and must insert their actual shortcut.
+        val token = if (emoticon.menuToken == '\u0000') {
+            emoticon.shortcut
+        } else {
+            emoticon.menuToken.toString()
+        }
+        if (activeController?.insert(token) != true) {
             onFallbackInsert(token)
         }
     }
@@ -1519,8 +1525,14 @@ internal fun EmoticonPanel(
     useOriginalEmoticons: Boolean,
     canDelete: Boolean = state.canDelete,
     onSearchFocusChanged: (Boolean) -> Unit = {},
-    onFallbackInsert: (Char) -> Unit = {},
+    onFallbackInsert: (String) -> Unit = {},
 ) {
+    val context = LocalContext.current
+    val customVersion by CustomEmoticonCatalog.version.collectAsState()
+    val customEmoticons = remember(context, customVersion) {
+        CustomEmoticonCatalog.all(context)
+            .distinctBy { it.originalAsset }
+    }
     val searchFieldState = rememberTextFieldState()
     val searchEditorController = remember { MessengerPlusEditorController() }
     var searchFocused by remember { mutableStateOf(false) }
@@ -1541,12 +1553,12 @@ internal fun EmoticonPanel(
         }
     }
     val query = searchFieldState.text.toString().withExpandedMsnMenuTokens().trim()
-    val emoticons = remember(query) {
-        MSN_EMOTICON_SHORTCUTS.filter { emoticon ->
+    val emoticons = remember(query, customVersion, customEmoticons) {
+        (customEmoticons + MSN_EMOTICON_SHORTCUTS).filter { emoticon ->
             emoticon.name.contains(query, ignoreCase = true) ||
                 emoticon.allShortcuts.any { it.contains(query, ignoreCase = true) } ||
                 emoticon.unicode.contains(query)
-        }
+        }.distinctBy { it.originalAsset ?: it.shortcut }
     }
     KeyboardPickerSheet(
         visible = state.visible,

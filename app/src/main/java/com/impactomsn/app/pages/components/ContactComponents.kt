@@ -39,6 +39,7 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -59,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import com.impactomsn.app.EmoticonPrefs
 import com.impactomsn.app.LocalMessengerScene
 import com.impactomsn.app.MessengerPlusText
+import com.impactomsn.app.MessengerScene
 import com.impactomsn.app.MsnEmoticonText
 import com.impactomsn.app.R
 import com.impactomsn.app.SceneBackdrop
@@ -70,6 +73,8 @@ import com.impactomsn.app.messengerPlusPlainText
 import com.impactomsn.app.rememberAvatarImage
 import com.impactomsn.app.sceneContentColor
 import com.impactomsn.app.ui.theme.avatar
+import com.impactomsn.app.ui.theme.LiquidGlassSurface
+import com.impactomsn.app.ui.theme.LocalLiquidGlassEnabled
 import com.impactomsn.app.ui.theme.ownDisplayPicture
 import com.impactomsn.app.ui.theme.pill
 
@@ -81,15 +86,38 @@ fun LoggedInUserProfileCard(
 ) {
     val context = LocalContext.current
     val emoticonSettings by remember(context) { EmoticonPrefs.state(context) }.collectAsState()
-    var presenceMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val presenceMenuExpanded = rememberSaveable { mutableStateOf(false) }
     val groupInteractionSource = remember { MutableInteractionSource() }
     val scene = LocalMessengerScene.current
     val sceneInk = sceneContentColor()
 
-    ElevatedCard(
-        onClick = onEditProfile,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    if (LocalLiquidGlassEnabled.current) {
+        LiquidGlassSurface(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onEditProfile,
+        ) {
+            ProfileCardContent(profile, onPresenceSelected, emoticonSettings, presenceMenuExpanded, groupInteractionSource, scene, sceneInk)
+        }
+    } else {
+        ElevatedCard(
+            onClick = onEditProfile,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            ProfileCardContent(profile, onPresenceSelected, emoticonSettings, presenceMenuExpanded, groupInteractionSource, scene, sceneInk)
+        }
+    }
+}
+
+@Composable
+private fun ProfileCardContent(
+    profile: UserProfileSnapshot,
+    onPresenceSelected: (Presence) -> Unit,
+    emoticonSettings: com.impactomsn.app.EmoticonSettings,
+    presenceMenuExpanded: MutableState<Boolean>,
+    groupInteractionSource: MutableInteractionSource,
+    scene: MessengerScene?,
+    sceneInk: Color,
+) {
         SceneBackdrop(scene, Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
@@ -142,7 +170,7 @@ fun LoggedInUserProfileCard(
                     )
                     Box {
                         FilledTonalButton(
-                            onClick = { presenceMenuExpanded = true },
+                            onClick = { presenceMenuExpanded.value = true },
                             shapes = ButtonDefaults.shapes(),
                             colors = ButtonDefaults.filledTonalButtonColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -164,8 +192,8 @@ fun LoggedInUserProfileCard(
                             }
                         }
                         DropdownMenuPopup(
-                            expanded = presenceMenuExpanded,
-                            onDismissRequest = { presenceMenuExpanded = false },
+                            expanded = presenceMenuExpanded.value,
+                            onDismissRequest = { presenceMenuExpanded.value = false },
                         ) {
                             DropdownMenuGroup(
                                 shapes = MenuDefaults.groupShape(0, 1),
@@ -175,7 +203,7 @@ fun LoggedInUserProfileCard(
                                     DropdownMenuItem(
                                         text = { Text(presence.ownStatusLabel()) },
                                         onClick = {
-                                            presenceMenuExpanded = false
+                                            presenceMenuExpanded.value = false
                                             onPresenceSelected(presence)
                                         },
                                         shape = MenuDefaults.itemShape(index, Presence.entries.size).shape
@@ -187,7 +215,6 @@ fun LoggedInUserProfileCard(
                 }
             }
         }
-    }
 }
 
 @Composable

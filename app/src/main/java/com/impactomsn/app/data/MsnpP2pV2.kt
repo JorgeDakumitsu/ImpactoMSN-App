@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicBoolean
+import android.util.Log
 
 /** Endpoint-aware MSNP18 P2Pv2 transport for MSNObject display pictures. */
 internal class MsnpP2pV2Session(
@@ -18,6 +19,7 @@ internal class MsnpP2pV2Session(
     private val localPicture: () -> LocalDisplayPicture?,
     private val onDisplayPicture: (ByteArray) -> Unit,
     private val onCustomEmoticon: (MsnDisplayPicture, ByteArray) -> Unit = { _, _ -> },
+    private val localCustomEmoticon: (MsnDisplayPicture) -> LocalDisplayPicture? = { null },
     private val localVoiceClip: (String) -> LocalDisplayPicture? = { null },
     private val onVoiceClip: (MsnDisplayPicture, ByteArray) -> Unit = { _, _ -> },
     private val localWink: (String) -> LocalDisplayPicture? = { null },
@@ -94,6 +96,11 @@ internal class MsnpP2pV2Session(
         val sessionId = nextSessionId()
         val callId = MsnpP2pUtil.randomGuid()
         pendingCalls[sessionId] = PendingV2Picture(callId, picture, now)
+        Log.d(
+            "CustomEmoticon",
+            "Solicitando objeto tipo=${picture.objectType} sha1=${picture.sha1d} " +
+                "session=$sessionId destino=$destination modo=P2Pv2",
+        )
         val content = MsnpP2pUtil.displayPictureRequestContent(sessionId, picture)
         sendApplicationControl(sipMessage(
                 firstLine = "INVITE MSNMSGR:$destination MSNSLP/1.0",
@@ -113,6 +120,10 @@ internal class MsnpP2pV2Session(
             .filter { now - it.value.createdAtNanos >= REQUEST_TIMEOUT_NANOS }
             .forEach { incoming.remove(it.key, it.value) }
         val packet = P2pV2Packet.parse(bytes) ?: return
+        Log.d(
+            "MsnpP2p",
+            "Paquete V2 recibido session=${packet.sessionId} tf=${packet.tfCombination} bytes=${packet.body.size}",
+        )
         if (packet.operationCode and OP_SYN != 0) bridgeStarted.set(true)
         val fileData = packet.sessionId != 0L && packet.tfCombination and 6 == 6
         if (packet.operationCode and OP_RAK != 0 && !fileData) sendAcknowledgement(packet)
@@ -154,7 +165,9 @@ internal class MsnpP2pV2Session(
                 val pending = pendingCalls.remove(packet.sessionId)
                 if (pending == null && incomingCustomObjects.containsKey(packet.sessionId)) {
                     incomingCustomObjects.remove(packet.sessionId)?.let { metadata ->
+                        Log.d("CustomEmoticon", "Datos tipo 2 V2 recibidos bytes=${message.body.size}")
                         if (metadata.matches(message.body)) onCustomEmoticon(metadata, message.body)
+                        else Log.w("CustomEmoticon", "SHA-1 no coincide en V2")
                     }
                 } else if (pending?.picture?.objectType == 2) {
                     if (pending.picture.matches(message.body)) onCustomEmoticon(pending.picture, message.body)
@@ -216,8 +229,28 @@ internal class MsnpP2pV2Session(
             }
         }
         if (custom != null) {
-            incomingCustomObjects[sessionId] = custom
+            Log.d("CustomEmoticon", "INVITE tipo 2 V2 recibido session=$sessionId")
+            val local = localCustomEmoticon(custom)
             sendSlpResponse(message, sessionId, true)
+            if (local != null) {
+                sendMessage(
+                    sessionId = sessionId,
+                    firstTf = TF_FIRST,
+                    operationCode = OP_NONE,
+                    footer = 0,
+                    body = ByteArray(4),
+                )
+                sendMessage(
+                    sessionId = sessionId,
+                    firstTf = TF_MSN_OBJECT or TF_FIRST,
+                    operationCode = OP_NONE,
+                    footer = 0,
+                    packageNumber = packageNumbers.incrementAndGet() and 0xffff,
+                    body = local.bytes,
+                )
+            } else {
+                incomingCustomObjects[sessionId] = custom
+            }
             return
         }
         val picture = MsnpP2pUtil.matchingLocalPicture(message.body, localPicture())
