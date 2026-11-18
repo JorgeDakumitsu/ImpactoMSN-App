@@ -45,6 +45,7 @@ internal sealed interface SwitchboardEvent {
     data class Typing(val senderEmail: String) : SwitchboardEvent
     data class Nudge(val senderEmail: String) : SwitchboardEvent
     data class DisplayPicture(val senderEmail: String, val bytes: ByteArray) : SwitchboardEvent
+    data class CustomEmoticon(val senderEmail: String, val metadata: MsnDisplayPicture, val bytes: ByteArray) : SwitchboardEvent
     data object Closed : SwitchboardEvent
 }
 
@@ -106,6 +107,9 @@ internal class MsnpSwitchboardSession(
             localOriginal = { localOriginal(this.contactEmail, it) }, publishOriginal = { id, original -> publishOriginal(this.contactEmail, id, original) },
             onDisplayPicture = { bytes ->
                 eventSink(SwitchboardEvent.DisplayPicture(this.contactEmail, bytes))
+            },
+            onCustomEmoticon = { metadata, bytes ->
+                eventSink(SwitchboardEvent.CustomEmoticon(this.contactEmail, metadata, bytes))
             },
             localEndpointId = machineGuid,
             remoteEndpointId = remoteEndpointId,
@@ -383,6 +387,11 @@ internal class MsnpSwitchboardSession(
                 if (!closed.get()) p2pPeer(sender, normalizeEndpointId(rawSender.substringAfter(';', "")))
                     ?.requestVoiceClip(message.metadata)
             }
+            is SwitchboardMimeMessage.CustomEmoticonOffer -> {
+                if (!message.metadata.creator.equals(sender, true)) return
+                if (!closed.get()) p2pPeer(sender, normalizeEndpointId(rawSender.substringAfter(';', "")))
+                    ?.requestDisplayPicture(message.metadata)
+            }
             is SwitchboardMimeMessage.WinkOffer -> {
                 if (!message.metadata.creator.equals(sender, true) || !acceptWink()) return
                 eventSink(SwitchboardEvent.WinkOffered(sender, message.metadata))
@@ -427,6 +436,9 @@ internal class MsnpSwitchboardSession(
                 localPhoto = { localPhoto(sender, it) }, publishPhoto = { publishPhoto(sender, it) },
                 localOriginal = { localOriginal(sender, it) }, publishOriginal = { id, original -> publishOriginal(sender, id, original) },
                 onDisplayPicture = { eventSink(SwitchboardEvent.DisplayPicture(sender, it)) },
+                onCustomEmoticon = { metadata, bytes ->
+                    eventSink(SwitchboardEvent.CustomEmoticon(sender, metadata, bytes))
+                },
                 localEndpointId = machineGuid, remoteEndpointId = sourceEndpoint,
                 localVoiceClip = { hash ->
                     if (sender == contactEmail || sender.equals(signedInEmail, true)) localVoiceClip(hash) else null
@@ -505,6 +517,7 @@ internal sealed interface SwitchboardMimeMessage {
     data class Ink(val drawing: InkDrawing) : SwitchboardMimeMessage
     data class WinkOffer(val metadata: MsnDisplayPicture) : SwitchboardMimeMessage
     data class VoiceClipOffer(val metadata: MsnDisplayPicture) : SwitchboardMimeMessage
+    data class CustomEmoticonOffer(val metadata: MsnDisplayPicture, val shortcut: String?) : SwitchboardMimeMessage
     data class P2p(val destination: String?, val bytes: ByteArray, val source: String? = null) : SwitchboardMimeMessage
     data object Typing : SwitchboardMimeMessage
     data object Nudge : SwitchboardMimeMessage
@@ -550,6 +563,26 @@ internal fun parseSwitchboardMime(payload: ByteArray): SwitchboardMimeMessage {
                 }?.let(SwitchboardMimeMessage::VoiceClipOffer) ?: SwitchboardMimeMessage.Unsupported
                 else -> SwitchboardMimeMessage.Unsupported
             }
+        }
+        "text/x-mms-emoticon" -> {
+            val candidates = listOfNotNull(
+                String(body, StandardCharsets.UTF_8),
+                headers["content-location"],
+                headers["content-disposition"],
+                headers["x-mms-object"],
+            )
+            candidates.firstNotNullOfOrNull { MsnDisplayPicture.parseObject(it, 2) }
+                ?.let { metadata ->
+                    val shortcut = headers["content-location"]
+                    SwitchboardMimeMessage.CustomEmoticonOffer(
+                        metadata.copy(
+                            extraAttributes = metadata.extraAttributes +
+                                listOfNotNull(shortcut?.let { "Shortcut" to it }).toMap(),
+                        ),
+                        shortcut,
+                    )
+                }
+                ?: SwitchboardMimeMessage.Unsupported
         }
         Msnp18Protocol.P2P_CONTENT_TYPE -> SwitchboardMimeMessage.P2p(
             destination = headers["p2p-dest"],

@@ -541,10 +541,22 @@ fun AppearanceSettingsScreen(
                         RadioButton(selected = appearance.uiStyle == style, onClick = null)
                     },
                     supportingContent = {
-                        Text(stringResource(if (style == UiStyle.Aero) R.string.appearance_style_aero_summary else R.string.appearance_style_standard_summary))
+                        Text(stringResource(
+                            when (style) {
+                                UiStyle.Aero -> R.string.appearance_style_aero_summary
+                                UiStyle.LiquidGlass -> R.string.appearance_style_liquid_glass_summary
+                                UiStyle.Standard -> R.string.appearance_style_standard_summary
+                            },
+                        ))
                     },
                     content = {
-                        Text(stringResource(if (style == UiStyle.Aero) R.string.appearance_style_aero else R.string.appearance_style_standard))
+                        Text(stringResource(
+                            when (style) {
+                                UiStyle.Aero -> R.string.appearance_style_aero
+                                UiStyle.LiquidGlass -> R.string.appearance_style_liquid_glass
+                                UiStyle.Standard -> R.string.appearance_style_standard
+                            },
+                        ))
                     },
                 )
             }

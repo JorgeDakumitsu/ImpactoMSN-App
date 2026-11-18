@@ -17,6 +17,7 @@ internal class MsnpP2pV2Session(
     private val sendPacket: suspend (ByteArray) -> Unit,
     private val localPicture: () -> LocalDisplayPicture?,
     private val onDisplayPicture: (ByteArray) -> Unit,
+    private val onCustomEmoticon: (MsnDisplayPicture, ByteArray) -> Unit = { _, _ -> },
     private val localVoiceClip: (String) -> LocalDisplayPicture? = { null },
     private val onVoiceClip: (MsnDisplayPicture, ByteArray) -> Unit = { _, _ -> },
     private val localWink: (String) -> LocalDisplayPicture? = { null },
@@ -38,6 +39,7 @@ internal class MsnpP2pV2Session(
     private val bridgeStarted = AtomicBoolean(false)
     private val incoming = ConcurrentHashMap<Pair<Long, Int>, IncomingV2Message>()
     private val pendingCalls = ConcurrentHashMap<Long, PendingV2Picture>()
+    private val incomingCustomObjects = ConcurrentHashMap<Long, MsnDisplayPicture>()
 
     private val photoApplicationLazy = lazy {
         MsnpPhotoSession(source, destination, fileDirectory, onPhotoShare,
@@ -150,7 +152,14 @@ internal class MsnpP2pV2Session(
             packet.sessionId != 0L && gameApplicationLazy.isInitialized() && games.owns(packet.sessionId) -> games.receive(message.body)
             baseTf and TF_MSN_OBJECT != 0 -> {
                 val pending = pendingCalls.remove(packet.sessionId)
-                if (pending?.picture?.objectType in listOf(8, 11, 15)) {
+                if (pending == null && incomingCustomObjects.containsKey(packet.sessionId)) {
+                    incomingCustomObjects.remove(packet.sessionId)?.let { metadata ->
+                        if (metadata.matches(message.body)) onCustomEmoticon(metadata, message.body)
+                    }
+                } else if (pending?.picture?.objectType == 2) {
+                    if (pending.picture.matches(message.body)) onCustomEmoticon(pending.picture, message.body)
+                    closeObjectSession(pending.callId, packet.sessionId)
+                } else if (pending?.picture?.objectType in listOf(8, 11, 15)) {
                     if (pending!!.picture.matches(message.body)) {
                         if (pending.picture.objectType == 15) photos.receivedObject(pending.picture, message.body)
                         else if (pending.picture.objectType == 8) onWink(pending.picture, message.body)
@@ -201,6 +210,16 @@ internal class MsnpP2pV2Session(
             return
         }
         val sessionId = message.body.field("SessionID")?.toLongOrNull() ?: return
+        val custom = message.body.field("Context")?.let { context ->
+            com.impactomsn.app.protocol.MsnBase64.decode(context)?.let {
+                MsnDisplayPicture.parseObject(String(it, Charsets.UTF_8).trimEnd('\u0000'), 2)
+            }
+        }
+        if (custom != null) {
+            incomingCustomObjects[sessionId] = custom
+            sendSlpResponse(message, sessionId, true)
+            return
+        }
         val picture = MsnpP2pUtil.matchingLocalPicture(message.body, localPicture())
             ?: message.body.field("Context")?.let { context ->
                 com.impactomsn.app.protocol.MsnBase64.decode(context)?.let {

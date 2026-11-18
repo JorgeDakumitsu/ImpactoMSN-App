@@ -30,6 +30,7 @@ import androidx.core.graphics.PathParser
 import androidx.core.graphics.withSave
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
+import java.io.File
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -262,7 +263,9 @@ internal object MsnEmoticonImages {
     fun load(context: Context, path: String): MsnEmoticonImage? {
         cache[path]?.let { return it as? MsnEmoticonImage }
         val decoded = try {
-            context.assets.open(path).use { decode(path, it.readBytes()) }
+            val bytes = if (File(path).isFile) File(path).readBytes()
+            else context.assets.open(path).use { it.readBytes() }
+            decode(path, bytes)
         } catch (error: Exception) {
             Log.w(TAG, "Unable to load emoticon artwork $path", error)
             null

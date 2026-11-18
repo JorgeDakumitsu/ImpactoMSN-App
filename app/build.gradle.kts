@@ -160,7 +160,7 @@ val releaseTag = providers.gradleProperty("releaseTag")
     )
     .orNull
 val appVersion = if (releaseTag == null) {
-    "1.0.0-dev" to 1
+    "1.0.0" to 1
 } else {
     val match = Regex(
         """v(0|[1-9]\d{0,2})\.(0|[1-9]\d?)\.(0|[1-9]\d?)(?:-(alpha|beta|rc)\.([1-9]\d?))?"""

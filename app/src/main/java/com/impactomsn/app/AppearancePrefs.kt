@@ -18,7 +18,8 @@ enum class ColorMode(val label: String) {
     Scenes("Scenes"),
 }
 
-enum class UiStyle { Standard, Aero }
+/** Visual styles are ordered as Standard, Windows 7 Aero, then Apple-inspired Liquid Glass. */
+enum class UiStyle { Standard, Aero, LiquidGlass }
 
 data class AppAppearance(
     val themeMode: ThemeMode = ThemeMode.Light,

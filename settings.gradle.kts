@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ImpactoMSN"
 include(":app")
+include(":shared")

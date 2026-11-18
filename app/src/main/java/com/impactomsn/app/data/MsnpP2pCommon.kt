@@ -19,7 +19,12 @@ internal object MsnpP2pUtil {
     private const val DISPLAY_PICTURE_GUID = "A4268EEC-FEC5-49E5-95C3-F126696BDBF6"
     private const val ZERO_GUID = "00000000-0000-0000-0000-000000000000"
 
-    fun objectAppId(type: Int): Int = when (type) { 11 -> 20; 15 -> 33; 8, 3 -> 1; else -> error("Unsupported MSNObject type.") }
+    fun objectAppId(type: Int): Int = when (type) {
+        2, 3, 8 -> 1
+        11 -> 20
+        15 -> 33
+        else -> error("Unsupported MSNObject type.")
+    }
 
     fun objectByteLimit(picture: MsnDisplayPicture?): Int = when (picture?.objectType) {
         8 -> picture.size.coerceAtMost(com.impactomsn.app.protocol.MsnWink.MAX_CAB_BYTES)

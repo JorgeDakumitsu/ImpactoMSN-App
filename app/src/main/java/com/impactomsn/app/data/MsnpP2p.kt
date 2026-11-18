@@ -13,6 +13,7 @@ internal class MsnpP2pSession(
     @Volatile private var sendPacket: suspend (ByteArray) -> Unit,
     private val localPicture: () -> LocalDisplayPicture?,
     private val onDisplayPicture: (ByteArray) -> Unit,
+    private val onCustomEmoticon: (MsnDisplayPicture, ByteArray) -> Unit = { _, _ -> },
     localEndpointId: String = "",
     remoteEndpointId: String? = null,
     private val localVoiceClip: (String) -> LocalDisplayPicture? = { null },
@@ -37,6 +38,7 @@ internal class MsnpP2pSession(
             sendPacket = { packet -> sendPacket(packet) },
             localPicture = localPicture,
             onDisplayPicture = onDisplayPicture,
+            onCustomEmoticon = onCustomEmoticon,
             localVoiceClip = localVoiceClip,
             onVoiceClip = onVoiceClip,
             localWink = localWink, onWink = onWink,
@@ -52,6 +54,7 @@ internal class MsnpP2pSession(
     private val ids = AtomicInteger(1_000)
     private val incoming = ConcurrentHashMap<Pair<Int, Int>, IncomingP2pMessage>()
     private val pendingCalls = ConcurrentHashMap<Int, PendingDisplayPicture>()
+    private val incomingCustomObjects = ConcurrentHashMap<Int, MsnDisplayPicture>()
 
     private val photoApplicationLazy = lazy {
         MsnpPhotoSession(localEmail, remoteEmail, fileDirectory, onPhotoShare,
@@ -184,7 +187,14 @@ internal class MsnpP2pSession(
                 // switchboard therefore may not own the original pending call. The live client
                 // validates the completed bytes against the contact's current MSNObject hash.
                 val pending = pendingCalls.remove(message.header.sessionId)
-                if (pending?.picture?.objectType in listOf(8, 11, 15)) {
+                if (pending == null && incomingCustomObjects.containsKey(message.header.sessionId)) {
+                    incomingCustomObjects.remove(message.header.sessionId)?.let { metadata ->
+                        if (metadata.matches(message.body)) onCustomEmoticon(metadata, message.body)
+                    }
+                } else if (pending?.picture?.objectType == 2) {
+                    if (pending.picture.matches(message.body)) onCustomEmoticon(pending.picture, message.body)
+                    closeObjectSession(pending.callId, message.header.sessionId)
+                } else if (pending?.picture?.objectType in listOf(8, 11, 15)) {
                     if (pending!!.picture.matches(message.body)) {
                         if (pending.picture.objectType == 15) photos.receivedObject(pending.picture, message.body)
                         else if (pending.picture.objectType == 8) onWink(pending.picture, message.body)
@@ -232,6 +242,19 @@ internal class MsnpP2pSession(
             )
         ) return
         val sessionId = message.body.field("SessionID")?.toIntOrNull() ?: return
+        val custom = message.body.field("Context")?.let { context ->
+            com.impactomsn.app.protocol.MsnBase64.decode(context)?.let {
+                MsnDisplayPicture.parseObject(String(it, Charsets.UTF_8).trimEnd('\u0000'), 2)
+            }
+        }
+        if (custom != null) {
+            incomingCustomObjects[sessionId] = custom
+            sendMessage(0, P2P_NO_FLAG, 0, sipMessage(
+                "MSNSLP/1.0 200 OK", remoteEmail, localEmail, message.branch, message.callId, 1,
+                MsnpP2pUtil.SESSION_REQUEST_CONTENT_TYPE, "SessionID: $sessionId\r\n\r\n",
+            ))
+            return
+        }
         val picture = MsnpP2pUtil.matchingLocalPicture(message.body, localPicture())
             ?: message.body.field("Context")?.let { context ->
                 com.impactomsn.app.protocol.MsnBase64.decode(context)?.let {

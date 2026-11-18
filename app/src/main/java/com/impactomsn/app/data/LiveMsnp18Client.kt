@@ -150,6 +150,7 @@ internal class LiveMsnp18Client(
     private val leaveAddressBookGroup: suspend (String, String, String, String) -> Unit = MsnpAddressBookService::leaveGroup,
     private val fetchAddressBookGroupMembers: suspend (String, String, String) -> List<GroupMember> = MsnpAddressBookService::fetchGroupMembers,
     private val nudgeLimiter: NudgeRateLimiter = NudgeRateLimiter(),
+    private val onCustomEmoticon: (MsnDisplayPicture, ByteArray) -> Unit = { _, _ -> },
 ) : MsnpClient {
     private val mutableContacts = MutableStateFlow<List<Contact>>(emptyList())
     private val mutableContactRequests = MutableStateFlow<List<ContactRequest>>(emptyList())
@@ -2975,6 +2976,9 @@ internal class LiveMsnp18Client(
         ) ensureSwitchboardContact(contactId)
         when (event) {
             SwitchboardEvent.ContactResolved -> registerIncomingSwitchboard(session)
+            is SwitchboardEvent.CustomEmoticon -> {
+                onCustomEmoticon(event.metadata, event.bytes)
+            }
             is SwitchboardEvent.WinkOffered -> {
                 if (isGroup(contactId)) return
                 val key = "$contactId\n${event.senderEmail.lowercase()}\n${event.metadata.sha1d}"

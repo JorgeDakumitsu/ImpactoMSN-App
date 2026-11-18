@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -61,6 +63,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -94,6 +97,8 @@ import com.impactomsn.app.pages.components.MockServerBanner
 import com.impactomsn.app.pages.components.SessionsDialog
 import com.impactomsn.app.pages.components.showActionSnackbar
 import com.impactomsn.app.ui.theme.ImpactoMsnTheme
+import com.impactomsn.app.ui.theme.AdaptiveWindowMode
+import com.impactomsn.app.ui.theme.LocalAdaptiveWindowMode
 import com.impactomsn.app.updates.updateManager
 
 class MainActivity : ImpactoMsnActivity() {
@@ -248,6 +253,7 @@ private fun ImpactoMsnApp(
     onLogout: () -> Unit,
 ) {
     val context = LocalContext.current
+    val windowMode = LocalAdaptiveWindowMode.current
     val updateState by context.updateManager.state.collectAsState()
     val resources = LocalResources.current
     val contacts by repository.contacts.collectAsState()
@@ -285,7 +291,17 @@ private fun ImpactoMsnApp(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (windowMode == AdaptiveWindowMode.Desktop) {
+                    Modifier
+                        .widthIn(max = 1440.dp)
+                        .wrapContentWidth(Alignment.CenterHorizontally)
+                } else {
+                    Modifier
+                },
+            ),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             Column(Modifier.onSizeChanged { topBarHeight = it.height }) {

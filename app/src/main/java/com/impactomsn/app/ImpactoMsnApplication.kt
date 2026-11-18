@@ -74,6 +74,9 @@ class ImpactoMsnApplication : Application() {
                 } else {
                     LiveMsnp18Client(
                         winkStore = winkStore,
+                        onCustomEmoticon = { metadata, bytes ->
+                            CustomEmoticonCatalog.add(this, metadata, bytes)
+                        },
                         fileTransferDirectory = File(noBackupFilesDir, "file_transfers"),
                         endpointName = { deviceEndpointName(this) },
                         endpointId = { deviceEndpointId(this) },

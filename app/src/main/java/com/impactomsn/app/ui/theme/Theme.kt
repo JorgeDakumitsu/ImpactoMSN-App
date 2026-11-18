@@ -156,8 +156,15 @@ fun ImpactoMsnTheme(
     val messengerPlusSettings by messengerPlusFlow.collectAsState()
     val isDark = false // dark mode was removed
     val aero = appearance.uiStyle == UiStyle.Aero
+    val liquidGlass = appearance.uiStyle == UiStyle.LiquidGlass
     val colorScheme = remember(context, appearance, isDark) {
-        impactomsnColorScheme(context, appearance, isDark).let { if (aero) aeroColorScheme(it) else it }
+        impactomsnColorScheme(context, appearance, isDark).let {
+            when {
+                aero -> aeroColorScheme(it)
+                liquidGlass -> liquidGlassColorScheme(it)
+                else -> it
+            }
+        }
     }
     val view = LocalView.current
 
@@ -186,19 +193,25 @@ fun ImpactoMsnTheme(
             motionScheme = MotionScheme.expressive(),
             shapes = ImpactoMsnShapes,
         ) {
-            if (fillWindowSurface && aero) {
-                Box(Modifier.fillMaxSize().background(AeroBackdrop)) {
-                    KeyboardSheetScaffold(content = content)
+            AdaptiveWindowProvider {
+                if (fillWindowSurface && aero) {
+                    Box(Modifier.fillMaxSize().background(AeroBackdrop)) {
+                        KeyboardSheetScaffold(content = content)
+                    }
+                } else if (fillWindowSurface && liquidGlass) {
+                    Box(Modifier.fillMaxSize().background(liquidGlassBackdrop(colorScheme))) {
+                        KeyboardSheetScaffold(content = content)
+                    }
+                } else if (fillWindowSurface) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = colorScheme.surfaceContainer,
+                    ) {
+                        KeyboardSheetScaffold(content = content)
+                    }
+                } else {
+                    content()
                 }
-            } else if (fillWindowSurface) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = colorScheme.surfaceContainer,
-                ) {
-                    KeyboardSheetScaffold(content = content)
-                }
-            } else {
-                content()
             }
         }
     }
@@ -232,14 +245,16 @@ internal val AeroBackdrop = Brush.verticalGradient(
 
 /** Aero Glass palette: sky-blue accents, dark navy text and translucent white containers. */
 internal fun aeroColorScheme(base: ColorScheme): ColorScheme = base.copy(
-    primary = Color(0xFF2F73C0),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xCCCFE3F8),
-    onPrimaryContainer = Color(0xFF0F2E57),
-    secondary = Color(0xFF4F83B3),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xB3DCEBF8),
-    onSecondaryContainer = Color(0xFF173A5E),
+    // Keep the selected Default/Dynamic/Scenes seed instead of replacing it
+    // with a fixed blue palette.
+    primary = base.primary,
+    onPrimary = base.onPrimary,
+    primaryContainer = base.primaryContainer.copy(alpha = 0.80f),
+    onPrimaryContainer = base.onPrimaryContainer,
+    secondary = base.secondary,
+    onSecondary = base.onSecondary,
+    secondaryContainer = base.secondaryContainer.copy(alpha = 0.70f),
+    onSecondaryContainer = base.onSecondaryContainer,
     background = Color(0xFFD6E5F5),
     onBackground = Color(0xFF1B2D44),
     surface = Color(0xB3F4F8FD),
@@ -253,4 +268,40 @@ internal fun aeroColorScheme(base: ColorScheme): ColorScheme = base.copy(
     surfaceContainer = Color(0xB3E8F0FA),
     surfaceContainerHigh = Color(0xCCDDE9F6),
     surfaceContainerHighest = Color(0xDDD2E2F3),
+)
+
+/**
+ * Apple-inspired translucent material implemented in Compose so it also works
+ * on iOS/iPadOS 15 and older macOS versions without Apple's newer native API.
+ */
+internal fun liquidGlassBackdrop(base: ColorScheme): Brush = Brush.verticalGradient(
+    0f to base.primary.copy(alpha = 0.18f),
+    0.42f to Color.White.copy(alpha = 0.92f),
+    1f to base.secondary.copy(alpha = 0.16f),
+)
+
+internal fun liquidGlassColorScheme(base: ColorScheme): ColorScheme = base.copy(
+    // The glass treatment changes translucency and surfaces, while the
+    // selected color mode supplies the accent/hue.
+    primary = base.primary,
+    onPrimary = base.onPrimary,
+    primaryContainer = base.primaryContainer.copy(alpha = 0.72f),
+    onPrimaryContainer = base.onPrimaryContainer,
+    secondary = base.secondary,
+    onSecondary = base.onSecondary,
+    secondaryContainer = base.secondaryContainer.copy(alpha = 0.60f),
+    onSecondaryContainer = base.onSecondaryContainer,
+    background = Color(0xFFEAF1FC),
+    onBackground = Color(0xFF18243A),
+    surface = Color(0x99FFFFFF),
+    onSurface = Color(0xFF18243A),
+    surfaceVariant = Color(0x80FFFFFF),
+    onSurfaceVariant = Color(0xFF4A5B76),
+    outline = Color(0x806D86AD),
+    outlineVariant = Color(0x66FFFFFF),
+    surfaceContainerLowest = Color(0x66FFFFFF),
+    surfaceContainerLow = Color(0x80FFFFFF),
+    surfaceContainer = Color(0x99FFFFFF),
+    surfaceContainerHigh = Color(0xB3FFFFFF),
+    surfaceContainerHighest = Color(0xCCFFFFFF),
 )

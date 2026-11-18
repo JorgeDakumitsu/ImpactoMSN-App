@@ -36,6 +36,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
@@ -95,6 +97,11 @@ internal fun MsnEmoticonText(
     nativeStyle: NativeTextStyle = NativeTextStyle(),
     sceneGlow: Boolean = false,
 ) {
+    val context = LocalContext.current
+    val customVersion by CustomEmoticonCatalog.version.collectAsState()
+    val customEmoticons = remember(context, customVersion) {
+        CustomEmoticonCatalog.all(context)
+    }
     val adaptiveColor = MaterialTheme.colorScheme.primary.toArgb()
     val parsed = remember(text, messengerPlusEnabled, hideControlCharacters, adaptiveColor) {
         MessengerPlusTextCodec.parseForPresentation(text, messengerPlusEnabled, hideControlCharacters, adaptiveColor)
@@ -109,6 +116,7 @@ internal fun MsnEmoticonText(
         findMsnEmoticons(
             parsed.text,
             renderedShortcutRanges = mappedShortcutRanges,
+            customEmoticons = customEmoticons,
         ).filterNot { match ->
             links.any { link -> match.range.start < link.end && match.range.endExclusive > link.start }
         }

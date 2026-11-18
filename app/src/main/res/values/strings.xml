@@ -178,6 +178,8 @@
     <string name="appearance_style_standard_summary">Clean Material design</string>
     <string name="appearance_style_aero">Windows 7 Aero</string>
     <string name="appearance_style_aero_summary">Translucent glass surfaces on a sky-blue backdrop</string>
+    <string name="appearance_style_liquid_glass">Apple Liquid Glass</string>
+    <string name="appearance_style_liquid_glass_summary">Soft translucent surfaces inspired by Apple design</string>
     <string name="login_opening_storage">Opening secure storage…</string>
     <string name="login_logged_out">Logged out</string>
     <string name="login_sign_in_failed">Couldn’t sign in</string>

@@ -36,7 +36,9 @@ internal data class MsnEmoticonShortcut(
      * (`*-static.svg` for animated emoticons, `*.svg` for static emoticons).
      */
     val selectorAssetCandidates: List<String>
-        get() = if (animated) {
+        get() = if (originalAsset.startsWith("/") || originalAsset.contains(":\\")) {
+            listOf(originalAsset)
+        } else if (animated) {
             listOf(
                 "$EMOTICON_ASSETS_DIR/$originalAsset-static.svg",
                 "$EMOTICON_ASSETS_DIR/$originalAsset.svg",
@@ -51,7 +53,9 @@ internal data class MsnEmoticonShortcut(
      * - Static emoticons use `.svg`, falling back to `.png` and `.gif` for future-proofing.
      */
     val artworkAssetCandidates: List<String>
-        get() = if (animated) {
+        get() = if (originalAsset.startsWith("/") || originalAsset.contains(":\\")) {
+            listOf(originalAsset)
+        } else if (animated) {
             listOf(
                 "$EMOTICON_ASSETS_DIR/$originalAsset.png",
                 "$EMOTICON_ASSETS_DIR/$originalAsset.gif",
@@ -212,6 +216,7 @@ internal fun findMsnEmoticons(
     text: String,
     includeTypedShortcuts: Boolean = true,
     renderedShortcutRanges: List<MsnEmoticonRange>? = null,
+    customEmoticons: List<MsnEmoticonShortcut> = emptyList(),
 ): List<MsnEmoticonMatch> {
     if (text.isEmpty()) return emptyList()
     val matches = mutableListOf<MsnEmoticonMatch>()
@@ -227,7 +232,11 @@ internal fun findMsnEmoticons(
             continue
         }
         val candidate = if (includeTypedShortcuts) {
-            MSN_SHORTCUT_CANDIDATES_LONGEST_FIRST.firstOrNull { candidate ->
+            (MSN_SHORTCUT_CANDIDATES_LONGEST_FIRST +
+                customEmoticons.flatMap { emoticon ->
+                    emoticon.allShortcuts.map { token -> ShortcutCandidate(token, emoticon) }
+                }.sortedByDescending { it.token.length })
+                .firstOrNull { candidate ->
                 val endExclusive = index + candidate.token.length
                 endExclusive <= text.length &&
                     renderedShortcutRanges.allows(index, endExclusive) &&
@@ -238,7 +247,7 @@ internal fun findMsnEmoticons(
                         length = candidate.token.length,
                         ignoreCase = true,
                     )
-            }
+                }
         } else {
             null
         }
