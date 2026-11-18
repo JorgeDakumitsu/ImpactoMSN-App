@@ -605,18 +605,24 @@ internal fun parseSwitchboardMime(payload: ByteArray): SwitchboardMimeMessage {
         }
         "text/x-mms-emoticon" -> {
             val bodyText = String(body, StandardCharsets.UTF_8).trimEnd('\u0000', '\r', '\n')
-            val pairPattern = Regex(
-                """(?is)(\[[^\]\r\n]{1,64}])\s*(?:\t|\s)+(<msnobj\b[^>]*/>)""",
-            )
-            val offers = pairPattern.findAll(bodyText).mapNotNull { match ->
-                val shortcut = match.groupValues[1].trim()
-                MsnDisplayPicture.parseObject(match.groupValues[2], 2)?.let { metadata ->
+            // MSN sends alias/object pairs separated by TAB. Older clients may
+            // use aliases with or without brackets, so do not require [alias].
+            val tabFields = bodyText.split('\t').map(String::trim)
+            val offers = tabFields
+                .asSequence()
+                .windowed(2, 2)
+                .mapNotNull { pair ->
+                    val shortcut = pair[0].takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    MsnDisplayPicture.parseObject(pair[1], 2)?.let { metadata ->
+                        shortcut to metadata
+                    }
+                }
+                .map { (shortcut, metadata) ->
                     Log.d("CustomEmoticon", "MIME tipo 2 reconocido shortcut=$shortcut")
                     metadata.copy(
                         extraAttributes = metadata.extraAttributes + ("Shortcut" to shortcut),
                     ) to shortcut
-                }
-            }.toList()
+                }.toList()
             if (offers.isNotEmpty()) {
                 SwitchboardMimeMessage.CustomEmoticonOffer(offers)
             } else {
