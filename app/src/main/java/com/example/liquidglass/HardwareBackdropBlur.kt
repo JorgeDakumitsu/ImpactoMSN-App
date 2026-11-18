@@ -1,21 +1,4 @@
-/**
- * API 31+ 的全 GPU 背景渲染器
- *
- * 原理：
- * 1. 把父视图的绘制录制进一个 RenderNode（跳过玻璃视图自身）
- * 2. 在 RenderNode 上挂 RenderEffect 链（全部 GPU 执行）：
- *    模糊 → 色差（API 33+ RuntimeShader）→ 饱和度 colorFilter
- * 3. 直接 drawRenderNode 到目标画布
- *
- * 相比 CPU 管线的优势：
- * - 零 Bitmap 分配（无 GC 压力）
- * - 零 CPU 像素处理（模糊/色差由 GPU 完成）
- * - 零 GPU→CPU 回读（不经过软件 Canvas 截图）
- * - 背景是"活"的：滚动/动画背景无需任何缓存失效逻辑
- *
- * 色差着色器与 CPU 实现（ChromaticAberrationEffect）语义一致：
- * 从位移贴图读取 (dx, dy)，对 R/G/B 三通道分别加上各自的偏移量采样。
- */
+
 package com.example.liquidglass
 
 import android.graphics.Bitmap
@@ -37,18 +20,11 @@ import androidx.annotation.RequiresApi
 internal class HardwareBackdropBlur {
 
     companion object {
-        /** 色差 RuntimeShader 需要 API 33+ */
+        
         fun supportsRuntimeShader(): Boolean =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
-        /**
-         * 色差 AGSL 着色器
-         *
-         * 与 CPU 实现对应关系：
-         * - baseDx = (mapR - 128) * scale / 255  ≈  (m.r - 0.5) * displacementScale
-         * - 每个通道在 x、y 上都加上自己的偏移量（channelOffsets 已含 intensity）
-         * - alpha 取原位置的值
-         */
+        
         private const val ABERRATION_AGSL = """
             uniform shader content;
             uniform shader dispMap;
@@ -60,7 +36,7 @@ internal class HardwareBackdropBlur {
                 half4 m = dispMap.eval(coord * dispCoordScale);
                 float2 base = float2((float(m.r) - 0.5) * displacementScale,
                                      (float(m.g) - 0.5) * displacementScale);
-                // 通道偏移沿位移方向应用（标量直接相加会广播成 45° 对角偏移）
+
                 float bl = length(base);
                 float2 dir = float2(0.0);
                 if (bl > 0.001) {
@@ -75,15 +51,7 @@ internal class HardwareBackdropBlur {
         """
     }
 
-    /**
-     * 色差参数（null = 不启用色差）
-     *
-     * @param displacementMap 位移贴图（R=dx, G=dy，128 为零位移）
-     * @param displacementScale 位移缩放（overLight 时调用方应减半）
-     * @param redOffset 红色通道偏移（已乘 intensity）
-     * @param greenOffset 绿色通道偏移（已乘 intensity）
-     * @param blueOffset 蓝色通道偏移（已乘 intensity）
-     */
+    
     data class AberrationParams(
         val displacementMap: Bitmap,
         val displacementScale: Float,
@@ -94,10 +62,10 @@ internal class HardwareBackdropBlur {
 
     private val renderNode = RenderNode("LiquidGlassBackdrop")
 
-    /** 调试用 API 级别钳制（见 LiquidGlassView.debugApiLevelCap；影响 vibrancy 选择） */
+    
     var debugApiLevelCap: Int = Int.MAX_VALUE
 
-    // 仅参数变化时重建 RenderEffect
+
     private var lastBlurRadius = Float.NaN
     private var lastSaturation = Float.NaN
     private var lastAberration: AberrationParams? = null
@@ -108,7 +76,7 @@ internal class HardwareBackdropBlur {
 
     private var aberrationShader: RuntimeShader? = null
 
-    // API 36+ vibrancy 饱和度滤镜（非线性；不支持时回退 ColorMatrix）
+
     private var vibrancyFilter: RuntimeColorFilter? = null
 
     private val location = IntArray(2)
@@ -116,17 +84,7 @@ internal class HardwareBackdropBlur {
 
     private val backdropCapture = BackdropCapture()
 
-    /**
-     * 绘制处理后的背景到目标画布
-     *
-     * @param canvas 目标画布（必须硬件加速）
-     * @param glassView 玻璃视图（用于定位与跳过自绘）
-     * @param blurRadius 模糊半径（像素，0 表示不模糊）
-     * @param saturation 饱和度（100 = 原始）
-     * @param clipPath 圆角裁剪路径
-     * @param aberration 色差参数（null = 不启用；需 API 33+，否则忽略并返回 false）
-     * @return 是否成功绘制；false 时调用方应回退到 CPU 管线
-     */
+    
     fun draw(
         canvas: Canvas,
         glassView: LiquidGlassView,
@@ -137,7 +95,7 @@ internal class HardwareBackdropBlur {
     ): Boolean {
         if (!canvas.isHardwareAccelerated) return false
         if (aberration != null && !supportsRuntimeShader()) return false
-        // 背景来源：默认直接父容器，setBackdropSource 后为指定视图（可跨层级）
+
         val parent = glassView.backdropView ?: return false
         val width = glassView.width
         val height = glassView.height
@@ -161,7 +119,7 @@ internal class HardwareBackdropBlur {
             effectBuilt = true
         }
 
-        // 计算相对背景视图的偏移（用屏幕坐标差，兼容滚动容器与跨 window 的背景视图）
+
         glassView.getLocationOnScreen(location)
         parent.getLocationOnScreen(parentLocation)
         val offsetX = (location[0] - parentLocation[0]).toFloat()
@@ -172,10 +130,10 @@ internal class HardwareBackdropBlur {
         try {
             recordingCanvas.translate(-offsetX, -offsetY)
             glassView.isCapturingBackdrop = true
-            // ⚠️ 硬件画布上父视图绘制子视图走的是 updateDisplayListIfDirty，
-            // 不会经过 View.draw(Canvas)，所以 isCapturingBackdrop 拦截不到自己，
-            // 会对正在录制中的 RenderNode 重入 beginRecording 导致崩溃。
-            // 跳过自身、以及跨层级祖先的重入/成环处理都在 BackdropCapture 里。
+
+
+
+
             try {
                 backdropCapture.draw(recordingCanvas, parent, glassView)
             } finally {
@@ -192,9 +150,7 @@ internal class HardwareBackdropBlur {
         return true
     }
 
-    /**
-     * 构建效果链：模糊 → 色差 → 饱和度（内层先执行）
-     */
+    
     private fun buildEffect(
         blurRadius: Float,
         saturation: Float,
@@ -231,11 +187,7 @@ internal class HardwareBackdropBlur {
         return effect
     }
 
-    /**
-     * 饱和度滤镜：API 36+ 用 vibrancy（非线性，AGSL 颜色滤镜），
-     * 以下版本回退线性 ColorMatrix。buildEffect 仅在参数变化时调用，
-     * uniform 在 createColorFilterEffect 时被快照，复用实例安全。
-     */
+    
     private fun saturationFilter(factor: Float): ColorFilter {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA &&
             debugApiLevelCap >= Build.VERSION_CODES.BAKLAVA
@@ -257,7 +209,7 @@ internal class HardwareBackdropBlur {
             "dispMap",
             BitmapShader(params.displacementMap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
         )
-        // 位移贴图尺寸可能与视图不同（生成滞后一帧），按比例映射采样坐标
+
         shader.setFloatUniform(
             "dispCoordScale",
             params.displacementMap.width.toFloat() / width,
