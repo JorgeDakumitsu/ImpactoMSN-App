@@ -174,9 +174,12 @@ internal class MsnpSwitchboardSession(
         sendPayload(Msnp18Protocol.textPayload(normalized, style), acknowledgement = "A")
     }
 
-    suspend fun sendCustomEmoticon(metadata: MsnDisplayPicture, shortcut: String) {
+    suspend fun sendCustomEmoticons(
+        announcements: List<Pair<String, MsnDisplayPicture>>,
+    ) {
+        if (announcements.isEmpty()) return
         sendPayload(
-            Msnp18Protocol.customEmoticonPayload(shortcut, metadata),
+            Msnp18Protocol.customEmoticonPayload(announcements),
             acknowledgement = "A",
         )
     }
@@ -603,7 +606,7 @@ internal fun parseSwitchboardMime(payload: ByteArray): SwitchboardMimeMessage {
         "text/x-mms-emoticon" -> {
             val bodyText = String(body, StandardCharsets.UTF_8).trimEnd('\u0000', '\r', '\n')
             val pairPattern = Regex(
-                """(?is)(\[\s*[^\]\r\n]{1,64}\s*])\s*(<msnobj\b[^>]*/>)""",
+                """(?is)(\[[^\]\r\n]{1,64}])\s*(?:\t|\s)+(<msnobj\b[^>]*/>)""",
             )
             val offers = pairPattern.findAll(bodyText).mapNotNull { match ->
                 val shortcut = match.groupValues[1].trim()

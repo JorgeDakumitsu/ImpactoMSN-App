@@ -1134,11 +1134,10 @@ internal class LiveMsnp18Client(
                     null
                 }
                 board?.let {
-                    customEmoticonAnnouncements(signedInEmail).filter { (shortcut, _) ->
+                    val announcements = customEmoticonAnnouncements(signedInEmail).filter { (shortcut, _) ->
                         message.text.contains(shortcut, ignoreCase = true)
-                    }.forEach { (shortcut, metadata) ->
-                        it.sendCustomEmoticon(metadata, shortcut)
                     }
+                    it.sendCustomEmoticons(announcements)
                     it.sendText(message.text, message.nativeStyle)
                 }
             }

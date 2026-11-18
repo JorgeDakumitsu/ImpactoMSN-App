@@ -245,10 +245,14 @@ object Msnp18Protocol {
         body = message.toByteArray(StandardCharsets.UTF_8),
     )
 
-    fun customEmoticonPayload(shortcut: String, metadata: MsnDisplayPicture): ByteArray =
+    fun customEmoticonPayload(
+        announcements: List<Pair<String, MsnDisplayPicture>>,
+    ): ByteArray =
         mimePayload(
             contentType = "text/x-mms-emoticon",
-            body = "$shortcut\r\n${metadata.toXml()}\r\n".toByteArray(StandardCharsets.UTF_8),
+            body = announcements.joinToString("\t") { (shortcut, metadata) ->
+                "$shortcut\t${metadata.toXml()}"
+            }.plus("\t").toByteArray(StandardCharsets.UTF_8),
         )
 
     fun p2pPayload(destination: String, packet: ByteArray, source: String? = null): ByteArray = mimePayload(
